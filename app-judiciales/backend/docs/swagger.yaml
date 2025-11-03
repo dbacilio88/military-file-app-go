@@ -1,0 +1,1052 @@
+openapi: 3.0.3
+info:
+  title: Sistema de Expedientes Judiciales API
+  description: |
+    API REST para el sistema de gestión de expedientes judiciales.
+    
+    ## Características
+    - Autenticación JWT
+    - Sistema de perfiles y roles granulares
+    - Gestión completa de expedientes, movimientos y juzgados
+    - Auditoría de operaciones
+    
+    ## Autenticación
+    La mayoría de los endpoints requieren un token JWT válido. 
+    Incluir el token en el header: `Authorization: Bearer {token}`
+    
+    ## Roles Disponibles
+    - `crear` - Crear nuevos registros
+    - `eliminar` - Eliminar registros
+    - `actualizar` - Modificar registros
+    - `leer` - Consultar/listar registros
+    - `imprimir` - Generar documentos imprimibles
+    - `exportar` - Exportar datos
+    - `importar` - Importar datos
+    - `ver` - Visualizar detalles
+    
+  version: 1.0.0
+  contact:
+    name: Soporte API
+    email: soporte@expedientes.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Servidor de desarrollo
+  - url: https://api.expedientes.com/v1
+    description: Servidor de producción
+
+tags:
+  - name: Auth
+    description: Autenticación y autorización
+  - name: Users
+    description: Gestión de usuarios
+  - name: Profiles
+    description: Gestión de perfiles y roles
+  - name: Expedientes
+    description: Gestión de expedientes judiciales
+  - name: Movimientos
+    description: Gestión de movimientos procesales
+  - name: Juzgados
+    description: Gestión de juzgados
+  - name: Dashboard
+    description: Estadísticas y métricas
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT obtenido del endpoint /auth/login
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "VALIDATION_ERROR"
+            message:
+              type: string
+              example: "Error en la validación de datos"
+            details:
+              type: string
+              example: "El email es requerido"
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        email:
+          type: string
+          format: email
+          example: "usuario@example.com"
+        nombre:
+          type: string
+          example: "Juan"
+        apellido:
+          type: string
+          example: "Pérez"
+        documento:
+          type: string
+          example: "12345678"
+        telefono:
+          type: string
+          example: "+54 11 1234-5678"
+        profile_id:
+          type: string
+          example: "507f1f77bcf86cd799439012"
+        roles:
+          type: array
+          items:
+            type: string
+          example: ["crear", "leer", "actualizar"]
+        activo:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Profile:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "507f1f77bcf86cd799439012"
+        name:
+          type: string
+          example: "Administrador"
+        slug:
+          type: string
+          example: "administrador"
+        roles:
+          type: array
+          items:
+            type: string
+          example: ["crear", "eliminar", "actualizar", "leer"]
+        active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "admin@judiciales.com"
+        password:
+          type: string
+          format: password
+          example: "admin123"
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+            access_token:
+              type: string
+              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            refresh_token:
+              type: string
+              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            expires_at:
+              type: string
+              format: date-time
+
+    CreateUserRequest:
+      type: object
+      required:
+        - email
+        - password
+        - nombre
+        - apellido
+        - documento
+      properties:
+        email:
+          type: string
+          format: email
+          description: "Email válido del usuario"
+          example: "usuario@example.com"
+        password:
+          type: string
+          format: password
+          minLength: 6
+          description: "Contraseña con mínimo 6 caracteres"
+          example: "password123"
+        nombre:
+          type: string
+          minLength: 1
+          description: "Nombre del usuario (requerido)"
+          example: "Juan"
+        apellido:
+          type: string
+          minLength: 1
+          description: "Apellido del usuario (requerido)"
+          example: "Pérez"
+        documento:
+          type: string
+          minLength: 1
+          description: "Número de documento de identidad (requerido)"
+          example: "12345678"
+        telefono:
+          type: string
+          pattern: "^\\+?[1-9]\\d{1,14}$"
+          description: "Número de teléfono (opcional)"
+          example: "+54 11 1234-5678"
+        profile_id:
+          type: string
+          description: "ID del perfil a asignar (opcional)"
+          example: "507f1f77bcf86cd799439012"
+        roles:
+          type: array
+          items:
+            type: string
+            enum: ["crear", "eliminar", "actualizar", "leer", "imprimir", "exportar", "importar", "ver"]
+          description: "Array de roles a asignar al usuario"
+          example: ["leer", "crear", "actualizar"]
+
+    Expediente:
+      type: object
+      properties:
+        id:
+          type: string
+        numero_expediente:
+          type: string
+          example: "EXP-2024-0001"
+        caratula:
+          type: string
+          example: "Pérez Juan c/ Constructora ABC s/ Daños y Perjuicios"
+        actor:
+          type: string
+          example: "Juan Pérez"
+        demandado:
+          type: string
+          example: "Constructora ABC S.A."
+        juzgado_id:
+          type: string
+        estado:
+          type: string
+          enum: [activo, archivado, suspendido, concluido]
+          example: "activo"
+        fecha_inicio:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Movimiento:
+      type: object
+      properties:
+        id:
+          type: string
+        expediente_id:
+          type: string
+        tipo:
+          type: string
+          enum: [audiencia, resolucion, escrito, notificacion, diligencia, otro]
+        descripcion:
+          type: string
+        fecha:
+          type: string
+          format: date-time
+        ubicacion:
+          type: string
+        estado:
+          type: string
+          enum: [pendiente, realizado, cancelado]
+        created_at:
+          type: string
+          format: date-time
+
+    Juzgado:
+      type: object
+      properties:
+        id:
+          type: string
+        nombre:
+          type: string
+          example: "Juzgado Civil N° 1"
+        tipo:
+          type: string
+          enum: [civil, penal, laboral, familia, comercial]
+        codigo:
+          type: string
+          example: "JUZ001"
+        direccion:
+          type: string
+        telefono:
+          type: string
+        email:
+          type: string
+        juez:
+          type: string
+        secretario:
+          type: string
+        activo:
+          type: boolean
+
+paths:
+  /health:
+    get:
+      summary: Health Check
+      description: Verifica el estado del servicio
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Servicio funcionando correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  timestamp:
+                    type: string
+                    format: date-time
+                  service:
+                    type: string
+                    example: "expedientes-backend"
+
+  /auth/login:
+    post:
+      summary: Iniciar sesión
+      description: Autentica un usuario y devuelve tokens JWT
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      summary: Renovar token de acceso
+      description: Genera un nuevo access token usando el refresh token
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token renovado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Refresh token inválido o expirado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      summary: Cerrar sesión
+      description: Invalida los tokens del usuario actual
+      tags:
+        - Auth
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sesión cerrada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Sesión cerrada exitosamente"
+
+  /users/form-config:
+    get:
+      summary: Obtener configuración del formulario de usuario
+      description: Obtiene información sobre campos requeridos, validaciones y roles disponibles para el formulario de crear/editar usuario
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Configuración del formulario
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      required_fields:
+                        type: array
+                        items:
+                          type: string
+                        example: ["email", "password", "nombre", "apellido", "documento"]
+                      field_validations:
+                        type: object
+                        properties:
+                          email:
+                            type: object
+                            properties:
+                              type:
+                                type: string
+                                example: "email"
+                              required:
+                                type: boolean
+                                example: true
+                              message:
+                                type: string
+                                example: "Debe ser un email válido"
+                          password:
+                            type: object
+                            properties:
+                              type:
+                                type: string
+                                example: "password"
+                              required:
+                                type: boolean
+                                example: true
+                              min_length:
+                                type: integer
+                                example: 6
+                              message:
+                                type: string
+                                example: "La contraseña debe tener al menos 6 caracteres"
+                          nombre:
+                            type: object
+                            properties:
+                              type:
+                                type: string
+                                example: "text"
+                              required:
+                                type: boolean
+                                example: true
+                              message:
+                                type: string
+                                example: "El nombre es requerido"
+                          apellido:
+                            type: object
+                            properties:
+                              type:
+                                type: string
+                                example: "text"
+                              required:
+                                type: boolean
+                                example: true
+                              message:
+                                type: string
+                                example: "El apellido es requerido"
+                          documento:
+                            type: object
+                            properties:
+                              type:
+                                type: string
+                                example: "text"
+                              required:
+                                type: boolean
+                                example: true
+                              message:
+                                type: string
+                                example: "El documento es requerido"
+                          telefono:
+                            type: object
+                            properties:
+                              type:
+                                type: string
+                                example: "tel"
+                              required:
+                                type: boolean
+                                example: false
+                              pattern:
+                                type: string
+                                example: "^\\+?[1-9]\\d{1,14}$"
+                              message:
+                                type: string
+                                example: "Formato de teléfono inválido"
+                      available_roles:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            value:
+                              type: string
+                            label:
+                              type: string
+                            description:
+                              type: string
+                        example:
+                          - value: "crear"
+                            label: "Crear"
+                            description: "Crear nuevos registros"
+                          - value: "leer"
+                            label: "Leer"
+                            description: "Consultar y visualizar información"
+                          - value: "actualizar"
+                            label: "Actualizar"
+                            description: "Modificar registros existentes"
+                          - value: "eliminar"
+                            label: "Eliminar"
+                            description: "Eliminar registros existentes"
+                          - value: "imprimir"
+                            label: "Imprimir"
+                            description: "Generar reportes e impresiones"
+                          - value: "exportar"
+                            label: "Exportar"
+                            description: "Exportar datos a archivos externos"
+                          - value: "importar"
+                            label: "Importar"
+                            description: "Importar datos desde archivos externos"
+                          - value: "ver"
+                            label: "Ver"
+                            description: "Visualizar información del sistema"
+                      available_profiles:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Profile'
+
+  /users:
+    get:
+      summary: Listar usuarios
+      description: Obtiene una lista paginada de usuarios
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            default: created_at
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Lista de usuarios
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      total:
+                        type: integer
+                      total_pages:
+                        type: integer
+    post:
+      summary: Crear usuario
+      description: Crea un nuevo usuario con perfil y roles
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Usuario creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/{id}:
+    get:
+      summary: Obtener usuario
+      description: Obtiene los detalles de un usuario específico
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Detalles del usuario
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Actualizar usuario
+      description: Actualiza la información de un usuario
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                apellido:
+                  type: string
+                telefono:
+                  type: string
+                profile_id:
+                  type: string
+                roles:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Usuario actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+    delete:
+      summary: Eliminar usuario
+      description: Elimina un usuario (soft delete)
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Usuario eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
+  /users/{id}/roles:
+    post:
+      summary: Añadir rol a usuario
+      description: Añade un rol específico a un usuario
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - role
+              properties:
+                role:
+                  type: string
+                  example: "exportar"
+      responses:
+        '200':
+          description: Rol añadido exitosamente
+    delete:
+      summary: Quitar rol de usuario
+      description: Remueve un rol específico de un usuario
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: role
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Rol removido exitosamente
+
+  /profiles:
+    get:
+      summary: Listar perfiles
+      description: Obtiene todos los perfiles disponibles
+      tags:
+        - Profiles
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Lista de perfiles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Profile'
+    post:
+      summary: Crear perfil
+      description: Crea un nuevo perfil con roles específicos
+      tags:
+        - Profiles
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - slug
+                - roles
+              properties:
+                name:
+                  type: string
+                  example: "Secretario Judicial"
+                slug:
+                  type: string
+                  example: "secretario"
+                roles:
+                  type: array
+                  items:
+                    type: string
+                  example: ["leer", "crear", "actualizar"]
+      responses:
+        '201':
+          description: Perfil creado exitosamente
+
+  /expedientes:
+    get:
+      summary: Listar expedientes
+      description: Obtiene una lista paginada de expedientes
+      tags:
+        - Expedientes
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: estado
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de expedientes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Expediente'
+    post:
+      summary: Crear expediente
+      description: Crea un nuevo expediente judicial
+      tags:
+        - Expedientes
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - caratula
+                - actor
+                - demandado
+                - juzgado_id
+              properties:
+                caratula:
+                  type: string
+                actor:
+                  type: string
+                demandado:
+                  type: string
+                juzgado_id:
+                  type: string
+                fecha_inicio:
+                  type: string
+                  format: date
+      responses:
+        '201':
+          description: Expediente creado exitosamente
+
+  /expedientes/{id}:
+    get:
+      summary: Obtener expediente
+      description: Obtiene los detalles de un expediente específico
+      tags:
+        - Expedientes
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Detalles del expediente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Expediente'
+
+  /movimientos/expediente/{expedienteId}:
+    get:
+      summary: Listar movimientos de un expediente
+      description: Obtiene todos los movimientos de un expediente específico
+      tags:
+        - Movimientos
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: expedienteId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de movimientos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Movimiento'
+
+  /juzgados:
+    get:
+      summary: Listar juzgados
+      description: Obtiene todos los juzgados disponibles
+      tags:
+        - Juzgados
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Lista de juzgados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Juzgado'
+
+  /dashboard/stats:
+    get:
+      summary: Obtener estadísticas del dashboard
+      description: Obtiene métricas y estadísticas generales del sistema
+      tags:
+        - Dashboard
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Estadísticas del sistema
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      total_expedientes:
+                        type: integer
+                      expedientes_activos:
+                        type: integer
+                      nuevos_este_mes:
+                        type: integer
+                      expedientes_por_estado:
+                        type: object

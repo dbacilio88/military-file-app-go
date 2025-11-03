@@ -1,0 +1,40 @@
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Build
+/dist
+/build
+
+# Dependencies
+vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads
+uploads/
+temp/
+
+# Coverage
+coverage.out
+coverage.html
+
+# Binary
+expedientes-backend
+expedientes-backend.exe
+
+# Test
+*.test

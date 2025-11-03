@@ -1,0 +1,125 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+coverage/
+.nyc_output/
+*.test.js
+*.spec.js
+
+# Production
+/build
+/dist
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+main
+app
+
+# Go specific
+*.out
+go.sum
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+data/
+mongo-data/
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# Backups
+backup/
+*.archive
+*.dump
+
+# Docker
+.dockerignore
+
+# SSL/Certificates
+*.pem
+*.key
+*.crt
+*.p12
+acme.json
+
+# Kubernetes secrets
+k8s/secrets/
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# Cache
+.cache/
+.eslintcache
+.stylelintcache
+
+# Documentation builds
+docs/_build/
+site/
+
+# Package manager
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Misc
+.vercel
+.turbo
