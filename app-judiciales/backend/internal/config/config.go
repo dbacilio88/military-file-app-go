@@ -20,8 +20,8 @@ type Config struct {
 	MongoDBDatabase string
 
 	// JWT Configuration
-	JWTSecret           string
-	JWTExpiration       time.Duration
+	JWTSecret            string
+	JWTExpiration        time.Duration
 	JWTRefreshExpiration time.Duration
 
 	// CORS Configuration
@@ -55,8 +55,8 @@ func Load() *Config {
 		MongoDBURI:      getEnvOrDefault("MONGODB_URI", "mongodb://localhost:27017"),
 		MongoDBDatabase: getEnvOrDefault("MONGODB_DATABASE", "expedientes_db"),
 
-		JWTSecret:           getEnvOrDefault("JWT_SECRET", "default-secret-change-in-production"),
-		JWTExpiration:       parseDuration(getEnvOrDefault("JWT_EXPIRATION", "24h")),
+		JWTSecret:            getEnvRequired("JWT_SECRET"),
+		JWTExpiration:        parseDuration(getEnvOrDefault("JWT_EXPIRATION", "24h")),
 		JWTRefreshExpiration: parseDuration(getEnvOrDefault("JWT_REFRESH_EXPIRATION", "168h")),
 
 		CORSAllowedOrigins: parseStringSlice(getEnvOrDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000")),
@@ -81,6 +81,14 @@ func getEnvOrDefault(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func getEnvRequired(key string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		log.Fatalf("Required environment variable %s is not set", key)
+	}
+	return value
 }
 
 func parseInt(s string) int {

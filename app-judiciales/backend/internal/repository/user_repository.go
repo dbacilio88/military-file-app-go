@@ -13,6 +13,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const (
+	userNotFound = "usuario no encontrado"
+)
+
 // UserRepository handles user data operations
 type UserRepository struct {
 	db         *database.Database
@@ -34,11 +38,6 @@ func (r *UserRepository) Create(user *models.User) error {
 	user.UpdatedAt = time.Now()
 	user.Activo = true
 
-	// ensure roles slice is not nil
-	if user.Roles == nil {
-		user.Roles = []string{}
-	}
-
 	_, err := r.collection.InsertOne(context.Background(), user)
 	return err
 }
@@ -54,7 +53,7 @@ func (r *UserRepository) GetByID(id string) (*models.User, error) {
 	err = r.collection.FindOne(context.Background(), bson.M{"_id": objectID}).Decode(&user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, errors.New("usuario no encontrado")
+			return nil, errors.New(userNotFound)
 		}
 		return nil, err
 	}
@@ -68,15 +67,13 @@ func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 	err := r.collection.FindOne(context.Background(), bson.M{"email": email}).Decode(&user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, errors.New("usuario no encontrado")
+			return nil, errors.New(userNotFound)
 		}
 		return nil, err
 	}
 
 	return &user, nil
-}
-
-// GetAll gets all users with pagination
+} // GetAll gets all users with pagination
 func (r *UserRepository) GetAll(page, limit int, sortBy, sortOrder string) ([]*models.User, int64, error) {
 	ctx := context.Background()
 
@@ -142,7 +139,7 @@ func (r *UserRepository) Update(id string, updates bson.M) error {
 	}
 
 	if result.MatchedCount == 0 {
-		return errors.New("usuario no encontrado")
+		return errors.New(userNotFound)
 	}
 
 	return nil
@@ -166,7 +163,7 @@ func (r *UserRepository) Delete(id string) error {
 	}
 
 	if result.MatchedCount == 0 {
-		return errors.New("usuario no encontrado")
+		return errors.New(userNotFound)
 	}
 
 	return nil
@@ -204,3 +201,8 @@ func (r *UserRepository) GetByRole(role string) ([]*models.User, error) {
 	return users, nil
 }
 
+// ExistsByProfileID checks if a user with the given profile ID exists
+func (r *UserRepository) ExistsByProfileID(ctx context.Context, profileID primitive.ObjectID) (bool, error) {
+	count, err := r.collection.CountDocuments(ctx, bson.M{"profile_id": profileID, "activo": true})
+	return count > 0, err
+}

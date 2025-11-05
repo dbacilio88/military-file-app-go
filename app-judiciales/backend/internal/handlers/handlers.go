@@ -1,14 +1,26 @@
 package handlers
 
 import (
+	"context"
+	"errors"
 	"expedientes-backend/internal/models"
-	"expedientes-backend/internal/repository"
 	"expedientes-backend/internal/services"
 	"expedientes-backend/internal/utils"
+	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
+// Error message constants
+const (
+	ErrUserNotAuthenticated = "user not authenticated"
+	ErrUserNotFound         = "usuario no encontrado"
+	ErrExpedienteNotFound   = "expediente not found"
+	ErrInvalidIDFormat      = "invalid ID format"
+	ErrInvalidUserID        = "invalid user ID"
 )
 
 // AuthHandler handles authentication endpoints
@@ -77,7 +89,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 
 // Logout handles user logout
 func (h *AuthHandler) Logout(c *gin.Context) {
-	// TODO: Implement token blacklist in Redis
+	// Implement token blacklist in Redis
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Logged out successfully",
@@ -120,7 +132,7 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 	id := c.Param("id")
 	user, err := h.userService.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "usuario no encontrado"})
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": ErrUserNotFound})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": user.ToUserResponse()})
@@ -128,16 +140,7 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 
 // CreateUser handles creating a user
 func (h *UserHandler) CreateUser(c *gin.Context) {
-	var payload struct {
-		Email     string   `json:"email" binding:"required,email"`
-		Password  string   `json:"password" binding:"required,min=6"`
-		Nombre    string   `json:"nombre" binding:"required"`
-		Apellido  string   `json:"apellido" binding:"required"`
-		Documento string   `json:"documento" binding:"required"`
-		Telefono  string   `json:"telefono"`
-		ProfileID string   `json:"profile_id"`
-		Roles     []string `json:"roles"`
-	}
+	var payload models.CreateUserRequest
 
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
@@ -146,18 +149,17 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 
 	hashed, err := utils.HashPassword(payload.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "error al encriptar contrase�a"})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "error al encriptar contraseña"})
 		return
 	}
 
-	user := &models.User{
+	user := models.User{
 		Email:     payload.Email,
 		Password:  hashed,
 		Nombre:    payload.Nombre,
 		Apellido:  payload.Apellido,
 		Documento: payload.Documento,
 		Telefono:  payload.Telefono,
-		Roles:     payload.Roles,
 		Activo:    true,
 	}
 
@@ -167,7 +169,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		}
 	}
 
-	if err := h.userService.Create(user); err != nil {
+	if err := h.userService.Create(&user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
 		return
 	}
@@ -178,21 +180,34 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 // UpdateUser handles updating a user
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	id := c.Param("id")
-	var updates map[string]interface{}
-	if err := c.ShouldBindJSON(&updates); err != nil {
+	var payload models.UpdateUserRequest
+	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
 
-	// prevent password updates here (use ChangePassword endpoint)
-	delete(updates, "password")
+	// Convert to updates map
+	updates := make(map[string]interface{})
 
-	if profileID, ok := updates["profile_id"].(string); ok && profileID != "" {
-		if oid, err := primitive.ObjectIDFromHex(profileID); err == nil {
+	if payload.Nombre != nil {
+		updates["nombre"] = *payload.Nombre
+	}
+	if payload.Apellido != nil {
+		updates["apellido"] = *payload.Apellido
+	}
+	if payload.Documento != nil {
+		updates["documento"] = *payload.Documento
+	}
+	if payload.Telefono != nil {
+		updates["telefono"] = *payload.Telefono
+	}
+	if payload.ProfileID != nil {
+		if oid, err := primitive.ObjectIDFromHex(*payload.ProfileID); err == nil {
 			updates["profile_id"] = oid
-		} else {
-			delete(updates, "profile_id")
 		}
+	}
+	if payload.Activo != nil {
+		updates["activo"] = *payload.Activo
 	}
 
 	if err := h.userService.Update(id, updates); err != nil {
@@ -215,34 +230,189 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 
 // GetProfile handles getting user profile
 func (h *UserHandler) GetProfile(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "Get profile endpoint"})
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   ErrUserNotAuthenticated,
+		})
+		return
+	}
+
+	user, err := h.userService.GetByID(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   ErrUserNotFound,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    user.ToUserResponse(),
+	})
 }
 
 // UpdateProfile handles updating user profile
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "Update profile endpoint"})
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   ErrUserNotAuthenticated,
+		})
+		return
+	}
+
+	var payload models.UpdateUserProfileRequest
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Convert to updates map
+	updates := make(map[string]interface{})
+
+	if payload.Nombre != nil {
+		updates["nombre"] = *payload.Nombre
+	}
+	if payload.Apellido != nil {
+		updates["apellido"] = *payload.Apellido
+	}
+	if payload.Telefono != nil {
+		updates["telefono"] = *payload.Telefono
+	}
+
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "no valid fields to update",
+		})
+		return
+	}
+
+	if err := h.userService.Update(userID.(string), updates); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Get updated user
+	user, err := h.userService.GetByID(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "perfil actualizado exitosamente",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    user.ToUserResponse(),
+		"message": "perfil actualizado exitosamente",
+	})
 }
 
 // ChangePassword handles changing user password
 func (h *UserHandler) ChangePassword(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "Change password endpoint"})
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   ErrUserNotAuthenticated,
+		})
+		return
+	}
+
+	var req models.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Get current user to verify current password
+	user, err := h.userService.GetByID(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   ErrUserNotFound,
+		})
+		return
+	}
+
+	// Verify current password
+	if !utils.CheckPasswordHash(req.CurrentPassword, user.Password) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "contraseña actual incorrecta",
+		})
+		return
+	}
+
+	// Hash new password
+	hashedPassword, err := utils.HashPassword(req.NewPassword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "error al encriptar nueva contraseña",
+		})
+		return
+	}
+
+	// Update password
+	updates := map[string]interface{}{
+		"password": hashedPassword,
+	}
+
+	if err := h.userService.Update(userID.(string), updates); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "contraseña actualizada exitosamente",
+	})
 }
 
 // ProfileHandler handles profile endpoints
 type ProfileHandler struct {
-	profileRepo *repository.ProfileRepository
+	profileService *services.ProfileService
 }
 
 // NewProfileHandler creates a new profile handler
-func NewProfileHandler(profileRepo *repository.ProfileRepository) *ProfileHandler {
-	return &ProfileHandler{profileRepo: profileRepo}
+func NewProfileHandler(profileService *services.ProfileService) *ProfileHandler {
+	return &ProfileHandler{profileService: profileService}
 }
 
 // GetProfile handles getting a profile by ID
 func (h *ProfileHandler) GetProfile(c *gin.Context) {
 	id := c.Param("id")
 
-	profile, err := h.profileRepo.GetByID(id)
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "ID de perfil inválido",
+		})
+		return
+	}
+
+	ctx := context.Background()
+	profile, err := h.profileService.GetProfileByID(ctx, objectID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
@@ -259,11 +429,12 @@ func (h *ProfileHandler) GetProfile(c *gin.Context) {
 
 // GetProfiles handles getting all profiles
 func (h *ProfileHandler) GetProfiles(c *gin.Context) {
-	profiles, err := h.profileRepo.GetAll()
+	ctx := context.Background()
+	profiles, err := h.profileService.GetAllProfiles(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "error al obtener perfiles",
 		})
 		return
 	}
@@ -274,76 +445,782 @@ func (h *ProfileHandler) GetProfiles(c *gin.Context) {
 	})
 }
 
+// CreateProfile handles creating a new profile
+func (h *ProfileHandler) CreateProfile(c *gin.Context) {
+	var req models.CreateProfileRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   ErrUserNotAuthenticated,
+		})
+		return
+	}
+
+	userObjID, err := primitive.ObjectIDFromHex(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   ErrInvalidUserID,
+		})
+		return
+	}
+
+	ctx := context.Background()
+	profile, err := h.profileService.CreateProfile(ctx, &req, userObjID)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "profile with this name already exists" ||
+			err.Error() == "profile with this slug already exists" {
+			statusCode = http.StatusConflict
+		}
+		c.JSON(statusCode, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"data":    profile,
+	})
+}
+
+// UpdateProfile handles updating a profile
+func (h *ProfileHandler) UpdateProfile(c *gin.Context) {
+	id := c.Param("id")
+
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "ID de perfil inválido",
+		})
+		return
+	}
+
+	var req models.UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Get user ID from context
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   ErrUserNotAuthenticated,
+		})
+		return
+	}
+
+	userObjID, err := primitive.ObjectIDFromHex(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   ErrInvalidUserID,
+		})
+		return
+	}
+
+	ctx := context.Background()
+	profile, err := h.profileService.UpdateProfile(ctx, objectID, &req, userObjID)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "profile not found" {
+			statusCode = http.StatusNotFound
+		} else if err.Error() == "profile with this name already exists" ||
+			err.Error() == "profile with this slug already exists" {
+			statusCode = http.StatusConflict
+		}
+		c.JSON(statusCode, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    profile,
+	})
+}
+
+// DeleteProfile handles deleting a profile
+func (h *ProfileHandler) DeleteProfile(c *gin.Context) {
+	id := c.Param("id")
+
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "ID de perfil inválido",
+		})
+		return
+	}
+
+	// Get user ID from context
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   ErrUserNotAuthenticated,
+		})
+		return
+	}
+
+	userObjID, err := primitive.ObjectIDFromHex(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   ErrInvalidUserID,
+		})
+		return
+	}
+
+	ctx := context.Background()
+	if err := h.profileService.DeleteProfile(ctx, objectID, userObjID); err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "profile not found" {
+			statusCode = http.StatusNotFound
+		} else if err.Error() == "cannot delete system profile" {
+			statusCode = http.StatusForbidden
+		}
+		c.JSON(statusCode, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "perfil eliminado exitosamente",
+	})
+}
+
+// GetProfilePermissions handles getting permissions for a profile
+func (h *ProfileHandler) GetProfilePermissions(c *gin.Context) {
+	id := c.Param("id")
+
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "ID de perfil inválido",
+		})
+		return
+	}
+
+	ctx := context.Background()
+	profile, err := h.profileService.GetProfileByID(ctx, objectID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "perfil no encontrado",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"profile_id":   profile.ID,
+			"profile_name": profile.Name,
+			"permissions":  profile.Permissions,
+		},
+	})
+}
+
+// UpdateProfilePermissions handles updating permissions for a profile
+func (h *ProfileHandler) UpdateProfilePermissions(c *gin.Context) {
+	id := c.Param("id")
+
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "ID de perfil inválido",
+		})
+		return
+	}
+
+	var req models.UpdatePermissionsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Get user ID from context
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   ErrUserNotAuthenticated,
+		})
+		return
+	}
+
+	userObjID, err := primitive.ObjectIDFromHex(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   ErrInvalidUserID,
+		})
+		return
+	}
+
+	ctx := context.Background()
+	profile, err := h.profileService.UpdateProfilePermissions(ctx, objectID, req.Permissions, userObjID)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "profile not found" {
+			statusCode = http.StatusNotFound
+		} else if err.Error() == "cannot modify system profile permissions" {
+			statusCode = http.StatusForbidden
+		}
+		c.JSON(statusCode, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    profile,
+	})
+}
+
+// GetAllPermissions handles getting all available permissions
+func (h *ProfileHandler) GetAllPermissions(c *gin.Context) {
+	permissions := models.GetAllPermissions()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    permissions,
+	})
+}
+
 // Other handlers with basic structure
-type ExpedienteHandler struct{}
+type ExpedienteHandler struct {
+	service *services.ExpedienteService
+}
 
 func NewExpedienteHandler(service *services.ExpedienteService) *ExpedienteHandler {
-	return &ExpedienteHandler{}
-}
-func (h *ExpedienteHandler) GetExpedientes(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Get expedientes"})
-}
-func (h *ExpedienteHandler) GetExpediente(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Get expediente"})
-}
-func (h *ExpedienteHandler) CreateExpediente(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Create expediente"})
-}
-func (h *ExpedienteHandler) UpdateExpediente(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Update expediente"})
-}
-func (h *ExpedienteHandler) DeleteExpediente(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Delete expediente"})
-}
-func (h *ExpedienteHandler) UpdateEstado(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Update estado"})
-}
-func (h *ExpedienteHandler) SearchExpedientes(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Search expedientes"})
-}
-
-type MovimientoHandler struct{}
-
-func NewMovimientoHandler(service *services.MovimientoService) *MovimientoHandler {
-	return &MovimientoHandler{}
-}
-func (h *MovimientoHandler) GetMovimientosByExpediente(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Get movimientos by expediente"})
-}
-func (h *MovimientoHandler) GetMovimiento(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Get movimiento"})
-}
-func (h *MovimientoHandler) CreateMovimiento(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Create movimiento"})
-}
-func (h *MovimientoHandler) UpdateMovimiento(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Update movimiento"})
-}
-func (h *MovimientoHandler) DeleteMovimiento(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Delete movimiento"})
-}
-
-type JuzgadoHandler struct{}
-
-func NewJuzgadoHandler(service *services.JuzgadoService) *JuzgadoHandler { return &JuzgadoHandler{} }
-func (h *JuzgadoHandler) GetJuzgados(c *gin.Context)                     { c.JSON(200, gin.H{"message": "Get juzgados"}) }
-func (h *JuzgadoHandler) GetJuzgado(c *gin.Context)                      { c.JSON(200, gin.H{"message": "Get juzgado"}) }
-func (h *JuzgadoHandler) CreateJuzgado(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Create juzgado"})
-}
-func (h *JuzgadoHandler) UpdateJuzgado(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Update juzgado"})
-}
-func (h *JuzgadoHandler) DeleteJuzgado(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Delete juzgado"})
-}
-
-// GetDashboardStats returns dashboard statistics
-func GetDashboardStats(expedienteService *services.ExpedienteService, movimientoService *services.MovimientoService) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "Dashboard stats endpoint"})
+	return &ExpedienteHandler{
+		service: service,
 	}
 }
+func (h *ExpedienteHandler) GetExpedientes(c *gin.Context) {
+	page := 1
+	limit := 10
+	sortBy := c.DefaultQuery("sort_by", "orden")
+	sortOrder := c.DefaultQuery("sort_order", "asc")
 
+	if p := c.Query("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+	if l := c.Query("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
 
+	expedientes, total, err := h.service.GetAll(page, limit, sortBy, sortOrder)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
 
+	totalPages := int(total) / limit
+	if int(total)%limit > 0 {
+		totalPages++
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"expedientes": expedientes,
+			"total":       total,
+			"page":        page,
+			"limit":       limit,
+			"total_pages": totalPages,
+		},
+	})
+}
+func (h *ExpedienteHandler) GetExpediente(c *gin.Context) {
+	id := c.Param("id")
+
+	expediente, err := h.service.GetByID(id)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == ErrExpedienteNotFound || err.Error() == ErrInvalidIDFormat {
+			statusCode = http.StatusNotFound
+		}
+		c.JSON(statusCode, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    expediente,
+	})
+}
+func (h *ExpedienteHandler) CreateExpediente(c *gin.Context) {
+	var req models.CreateExpedienteRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   ErrUserNotAuthenticated,
+		})
+		return
+	}
+
+	userObjID, err := primitive.ObjectIDFromHex(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   ErrInvalidUserID,
+		})
+		return
+	}
+
+	expediente := &models.Expediente{
+		Grado:            req.Grado,
+		ApellidosNombres: req.ApellidosNombres,
+		NumeroPaginas:    req.NumeroPaginas,
+		SituacionMilitar: req.SituacionMilitar,
+		CIP:              req.CIP,
+		Ubicacion:        req.Ubicacion,
+		Orden:            req.Orden,
+		CreatedBy:        userObjID,
+		UpdatedBy:        userObjID,
+	}
+
+	if err := h.service.Create(expediente); err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "expediente with this CIP already exists" {
+			statusCode = http.StatusConflict
+		}
+		c.JSON(statusCode, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"data":    expediente,
+	})
+}
+func (h *ExpedienteHandler) UpdateExpediente(c *gin.Context) {
+	id := c.Param("id")
+
+	var req models.UpdateExpedienteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	userObjID, err := h.getUserIDFromContext(c)
+	if err != nil {
+		return // Error already handled in helper
+	}
+
+	updates := h.buildUpdateMap(&req, userObjID)
+	if len(updates) == 1 { // Only updatedBy
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "no fields to update",
+		})
+		return
+	}
+
+	if err := h.updateExpedienteInService(c, id, updates); err != nil {
+		return // Error already handled in helper
+	}
+
+	h.respondWithUpdatedExpediente(c, id)
+}
+
+// getUserIDFromContext extracts and validates user ID from gin context
+func (h *ExpedienteHandler) getUserIDFromContext(c *gin.Context) (primitive.ObjectID, error) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   ErrUserNotAuthenticated,
+		})
+		return primitive.NilObjectID, errors.New("user not authenticated")
+	}
+
+	userObjID, err := primitive.ObjectIDFromHex(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   ErrInvalidUserID,
+		})
+		return primitive.NilObjectID, err
+	}
+
+	return userObjID, nil
+}
+
+// buildUpdateMap builds the updates map from request
+func (h *ExpedienteHandler) buildUpdateMap(req *models.UpdateExpedienteRequest, userObjID primitive.ObjectID) map[string]interface{} {
+	updates := make(map[string]interface{})
+
+	if req.Grado != nil {
+		updates["grado"] = *req.Grado
+	}
+	if req.ApellidosNombres != nil {
+		updates["apellidos_nombres"] = *req.ApellidosNombres
+	}
+	if req.NumeroPaginas != nil {
+		updates["numero_paginas"] = *req.NumeroPaginas
+	}
+	if req.SituacionMilitar != nil {
+		updates["situacion_militar"] = *req.SituacionMilitar
+	}
+	if req.CIP != nil {
+		updates["cip"] = *req.CIP
+	}
+	if req.Estado != nil {
+		updates["estado"] = *req.Estado
+	}
+	if req.Ubicacion != nil {
+		updates["ubicacion"] = *req.Ubicacion
+	}
+	if req.Orden != nil {
+		updates["orden"] = *req.Orden
+	}
+
+	updates["updatedBy"] = userObjID
+	return updates
+}
+
+// updateExpedienteInService updates expediente using service
+func (h *ExpedienteHandler) updateExpedienteInService(c *gin.Context, id string, updates map[string]interface{}) error {
+	if err := h.service.Update(id, updates); err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == ErrExpedienteNotFound {
+			statusCode = http.StatusNotFound
+		} else if err.Error() == "expediente with this CIP already exists" {
+			statusCode = http.StatusConflict
+		}
+		c.JSON(statusCode, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return err
+	}
+	return nil
+}
+
+// respondWithUpdatedExpediente sends response with updated expediente data
+func (h *ExpedienteHandler) respondWithUpdatedExpediente(c *gin.Context, id string) {
+	expediente, err := h.service.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "expediente updated successfully",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    expediente,
+	})
+}
+func (h *ExpedienteHandler) DeleteExpediente(c *gin.Context) {
+	id := c.Param("id")
+
+	// Get user ID from context
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   ErrUserNotAuthenticated,
+		})
+		return
+	}
+
+	if err := h.service.Delete(id, userID.(string)); err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "expediente not found or already deleted" || err.Error() == ErrInvalidIDFormat {
+			statusCode = http.StatusNotFound
+		}
+		c.JSON(statusCode, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "expediente deleted successfully",
+	})
+}
+func (h *ExpedienteHandler) UpdateEstado(c *gin.Context) {
+	id := c.Param("id")
+
+	var req struct {
+		Estado models.EstadoExpediente `json:"estado" binding:"required,oneof=dentro fuera"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Get user ID from context
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   ErrUserNotAuthenticated,
+		})
+		return
+	}
+
+	if err := h.service.UpdateEstado(id, req.Estado, userID.(string)); err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == ErrExpedienteNotFound || err.Error() == ErrInvalidIDFormat {
+			statusCode = http.StatusNotFound
+		}
+		c.JSON(statusCode, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "estado updated successfully",
+	})
+}
+func (h *ExpedienteHandler) SearchExpedientes(c *gin.Context) {
+	var params models.ExpedienteSearchParams
+
+	if err := c.ShouldBindQuery(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Set defaults
+	if params.Page < 1 {
+		params.Page = 1
+	}
+	if params.Limit < 1 {
+		params.Limit = 10
+	}
+	if params.SortBy == "" {
+		params.SortBy = "orden"
+	}
+	if params.SortOrder == "" {
+		params.SortOrder = "asc"
+	}
+
+	expedientes, total, err := h.service.Search(params)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	totalPages := int(total) / params.Limit
+	if int(total)%params.Limit > 0 {
+		totalPages++
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"expedientes": expedientes,
+			"total":       total,
+			"page":        params.Page,
+			"limit":       params.Limit,
+			"total_pages": totalPages,
+		},
+	})
+}
+
+// BulkImportExpedientes handles bulk import of expedientes from Excel file
+func (h *ExpedienteHandler) BulkImportExpedientes(c *gin.Context) {
+	// Get user ID from context
+	userObjID, err := h.getUserIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   "Usuario no autenticado",
+		})
+		return
+	}
+
+	// Get file from form
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Archivo requerido. Use el campo 'file' para subir el archivo Excel",
+		})
+		return
+	}
+
+	// Validate file extension
+	if !isExcelFile(file.Filename) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "El archivo debe ser de tipo Excel (.xlsx o .xls)",
+		})
+		return
+	}
+
+	// Validate file size (max 10MB)
+	if file.Size > 10*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "El archivo no puede ser mayor a 10MB",
+		})
+		return
+	}
+
+	// Process bulk import
+	result, err := h.service.BulkImportFromExcel(file, userObjID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Determine response status based on results
+	statusCode := http.StatusOK
+	if result.Exitosos == 0 {
+		statusCode = http.StatusBadRequest
+	} else if result.Fallidos > 0 {
+		statusCode = http.StatusPartialContent // 206 for partial success
+	}
+
+	c.JSON(statusCode, gin.H{
+		"success": result.Exitosos > 0,
+		"data":    result,
+		"message": generateImportSummaryMessage(result),
+	})
+}
+
+// isExcelFile checks if the file has a valid Excel extension
+func isExcelFile(filename string) bool {
+	if len(filename) < 4 {
+		return false
+	}
+	ext := filename[len(filename)-4:]
+	return ext == ".xls" || filename[len(filename)-5:] == ".xlsx"
+}
+
+// generateImportSummaryMessage generates a summary message for the import result
+func generateImportSummaryMessage(result *models.BulkImportResult) string {
+	if result.Exitosos == 0 {
+		return "No se pudieron importar expedientes. Revise los errores y corrija el archivo Excel."
+	}
+
+	if result.Fallidos == 0 {
+		return "Todos los expedientes fueron importados exitosamente."
+	}
+
+	return "Importación parcial completada. Algunos registros tuvieron errores."
+}
+
+// GetDashboardStats handles GET /api/v1/expedientes/dashboard/stats
+// @Summary Get comprehensive dashboard statistics
+// @Description Retrieve detailed statistics for the dashboard including counts by grade, status, location, and temporal data
+// @Tags Dashboard
+// @Produce json
+// @Success 200 {object} models.DashboardStats
+// @Failure 401 {object} models.APIResponse
+// @Failure 500 {object} models.APIResponse
+// @Router /api/v1/expedientes/dashboard/stats [get]
+// @Security ApiKeyAuth
+func (h *ExpedienteHandler) GetDashboardStats(c *gin.Context) {
+	log.Printf("📊 Getting dashboard statistics...")
+
+	// Get dashboard statistics
+	stats, err := h.service.GetDashboardStats()
+	if err != nil {
+		log.Printf("❌ Error getting dashboard stats: %v", err)
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Message: "Error retrieving dashboard statistics",
+			Error: &models.APIError{
+				Code:    "STATS_ERROR",
+				Message: err.Error(),
+			},
+		})
+		return
+	}
+
+	log.Printf("✅ Dashboard statistics retrieved successfully")
+	log.Printf("📈 Total expedientes: %d", stats.ResumenGeneral.TotalExpedientes)
+	log.Printf("📍 Ubicaciones únicas: %d", stats.ResumenGeneral.UbicacionesUnicas)
+	log.Printf("📊 Grados analizados: %d", len(stats.EstadisticasPorGrado))
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Message: "Dashboard statistics retrieved successfully",
+		Data:    stats,
+	})
+}

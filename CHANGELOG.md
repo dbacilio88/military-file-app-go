@@ -7,6 +7,33 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ## [Unreleased]
 
+### 🔧 Added
+- **Docker Multi-Environment**: Configuraciones para desarrollo, producción y empresarial
+- **Remote Access**: Soporte para acceso remoto con configuración de red 0.0.0.0
+- **MongoDB Cloud**: Migración completa a MongoDB Atlas
+- **Health Checks**: Sistema robusto de verificación de salud para todos los servicios
+- **CORS Universal**: Configuración CORS para acceso desde cualquier origen
+- **Environment Files**: Tres archivos de entorno (.env, .env.prod, .env.enterprise)
+- **Production Scaling**: Configuración con réplicas y límites de recursos
+
+### 🛠️ Changed
+- **Docker Compose**: Actualizado a v2.40.0 con tres configuraciones distintas
+- **Go Dependencies**: Resueltos conflictos de versiones con Go 1.21
+- **Authentication**: Mejorado sistema de login con credenciales unificadas
+- **Port Binding**: Actualizado para permitir acceso desde red externa
+- **Deployment Guide**: DEPLOY.md simplificado con comandos esenciales
+
+### 🐛 Fixed
+- **Backend Waiting**: Resuelto problema de backend en estado de espera
+- **Health Checks**: Cambiado de HEAD a GET requests para mejor compatibilidad
+- **Login Issues**: Corregidos problemas de autenticación
+- **Network Access**: Habilitado acceso remoto desde IP 192.168.18.13
+
+### 📚 Documentation
+- **DEPLOY.md**: Guía concisa de despliegue con comandos esenciales
+- **Environment Setup**: Documentación de configuración multi-entorno
+- **Remote Access**: Instrucciones para configuración de acceso remoto
+
 ### Planificado
 - Sistema de notificaciones en tiempo real
 - Integración con firma digital

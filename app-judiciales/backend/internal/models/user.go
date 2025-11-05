@@ -13,15 +13,13 @@ type User struct {
 	Password  string             `json:"-" bson:"password" binding:"required,min=6"`
 	Nombre    string             `json:"nombre" bson:"nombre" binding:"required"`
 	Apellido  string             `json:"apellido" bson:"apellido" binding:"required"`
-	Documento string             `json:"documento" bson:"documento" binding:"required"`
-	Telefono  string             `json:"telefono" bson:"telefono"`
-	// ProfileID references a Profile document that groups roles/permissions
-	ProfileID primitive.ObjectID `json:"profile_id,omitempty" bson:"profile_id,omitempty"`
-	// Roles are explicit permissions granted to the user (can be added/removed on user)
-	Roles     []string  `json:"roles" bson:"roles"`
-	Activo    bool      `json:"activo" bson:"activo"`
-	CreatedAt time.Time `json:"created_at" bson:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
+	Documento string             `json:"documento" bson:"documento" binding:"required,len=8,numeric"`
+	Telefono  string             `json:"telefono" bson:"telefono" binding:"omitempty,len=9,numeric"`
+	// ProfileID references a Profile document that contains permissions
+	ProfileID primitive.ObjectID `json:"profile_id" bson:"profile_id" binding:"required"`
+	Activo    bool               `json:"activo" bson:"activo"`
+	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
 // UserRole represents the different user roles
@@ -40,6 +38,34 @@ type UserLogin struct {
 	Password string `json:"password" binding:"required"`
 }
 
+// CreateUserRequest represents user creation request
+type CreateUserRequest struct {
+	Email     string `json:"email" binding:"required,email"`
+	Password  string `json:"password" binding:"required,min=6"`
+	Nombre    string `json:"nombre" binding:"required"`
+	Apellido  string `json:"apellido" binding:"required"`
+	Documento string `json:"documento" binding:"required,len=8,numeric"`
+	Telefono  string `json:"telefono" binding:"omitempty,len=9,numeric"`
+	ProfileID string `json:"profile_id" binding:"required"`
+}
+
+// UpdateUserRequest represents user update request
+type UpdateUserRequest struct {
+	Nombre    *string `json:"nombre,omitempty" binding:"omitempty,min=1"`
+	Apellido  *string `json:"apellido,omitempty" binding:"omitempty,min=1"`
+	Documento *string `json:"documento,omitempty" binding:"omitempty,len=8,numeric"`
+	Telefono  *string `json:"telefono,omitempty" binding:"omitempty,len=9,numeric"`
+	ProfileID *string `json:"profile_id,omitempty"`
+	Activo    *bool   `json:"activo,omitempty"`
+}
+
+// UpdateUserProfileRequest represents profile update request (for current user)
+type UpdateUserProfileRequest struct {
+	Nombre   *string `json:"nombre,omitempty" binding:"omitempty,min=1"`
+	Apellido *string `json:"apellido,omitempty" binding:"omitempty,min=1"`
+	Telefono *string `json:"telefono,omitempty" binding:"omitempty,len=9,numeric"`
+}
+
 // UserResponse represents user data returned to client (without password)
 type UserResponse struct {
 	ID        primitive.ObjectID `json:"id"`
@@ -48,8 +74,7 @@ type UserResponse struct {
 	Apellido  string             `json:"apellido"`
 	Documento string             `json:"documento"`
 	Telefono  string             `json:"telefono"`
-	ProfileID primitive.ObjectID `json:"profile_id,omitempty" bson:"profile_id,omitempty"`
-	Roles     []string           `json:"roles"`
+	ProfileID primitive.ObjectID `json:"profile_id"`
 	Activo    bool               `json:"activo"`
 	CreatedAt time.Time          `json:"created_at"`
 	UpdatedAt time.Time          `json:"updated_at"`
@@ -65,7 +90,6 @@ func (u *User) ToUserResponse() UserResponse {
 		Documento: u.Documento,
 		Telefono:  u.Telefono,
 		ProfileID: u.ProfileID,
-		Roles:     u.Roles,
 		Activo:    u.Activo,
 		CreatedAt: u.CreatedAt,
 		UpdatedAt: u.UpdatedAt,

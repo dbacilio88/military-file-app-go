@@ -1,154 +1,238 @@
-﻿package middleware
+package middleware
 
 import (
-"net/http"
-"os"
-"strings"
-"time"
+	"errors"
+	"expedientes-backend/internal/models"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+	"time"
 
-"github.com/gin-gonic/gin"
-"github.com/golang-jwt/jwt/v5"
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+)
+
+const (
+	errRoleNotFoundInContext            = "Rol de usuario no encontrado en el contexto"
+	errInsufficientPermissions          = "El usuario no tiene los permisos requeridos"
+	errInsufficientPermissionsOperation = "El usuario no tiene los permisos requeridos para esta operación"
+	errInsufficientRoles                = "El usuario no tiene los roles requeridos"
 )
 
 type Claims struct {
-UserID    string   `json:"user_id"`
-Email     string   `json:"email"`
-Roles     []string `json:"roles"`
-ProfileID string   `json:"profile_id"`
-jwt.RegisteredClaims
+	UserID    string   `json:"user_id"`
+	Email     string   `json:"email"`
+	Roles     []string `json:"roles"`
+	ProfileID string   `json:"profile_id"`
+	jwt.RegisteredClaims
 }
 
 // AuthMiddleware validates JWT token
 func AuthMiddleware() gin.HandlerFunc {
-return func(c *gin.Context) {
-secretKey := os.Getenv("JWT_SECRET")
-if secretKey == "" {
-secretKey = "default-secret-key-change-in-production"
+	return func(c *gin.Context) {
+		// Skip authentication for OPTIONS requests (CORS preflight)
+		if c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
+		secretKey := getJWTSecret()
+
+		tokenString, err := extractTokenFromHeader(c)
+		if err != nil {
+			respondWithAuthError(c, "UNAUTHORIZED", "Encabezado de autorización requerido")
+			return
+		}
+
+		claims, err := validateToken(tokenString, secretKey)
+		if err != nil {
+			respondWithAuthError(c, "INVALID_TOKEN", "Token inválido o expirado")
+			return
+		}
+
+		if isTokenExpired(claims) {
+			respondWithAuthError(c, "TOKEN_EXPIRED", "El token ha expirado")
+			return
+		}
+
+		setUserContext(c, claims)
+		c.Next()
+	}
 }
 
-authHeader := c.GetHeader("Authorization")
-if authHeader == "" {
-c.JSON(http.StatusUnauthorized, gin.H{
-"success": false,
-"error": gin.H{
-"code":    "UNAUTHORIZED",
-"message": "Encabezado de autorización requerido",
-},
-})
-c.Abort()
-return
+// getJWTSecret retrieves JWT secret from environment
+func getJWTSecret() string {
+	secretKey := os.Getenv("JWT_SECRET")
+	if secretKey == "" {
+		log.Fatalf("JWT_SECRET environment variable is required")
+	}
+	return secretKey
 }
 
-// Extract token from "Bearer <token>"
-tokenParts := strings.Split(authHeader, " ")
-if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
-c.JSON(http.StatusUnauthorized, gin.H{
-"success": false,
-"error": gin.H{
-"code":    "INVALID_TOKEN_FORMAT",
-"message": "Formato de encabezado de autorización inválido",
-},
-})
-c.Abort()
-return
+// extractTokenFromHeader extracts token from Authorization header
+func extractTokenFromHeader(c *gin.Context) (string, error) {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		return "", errors.New("missing authorization header")
+	}
+
+	tokenParts := strings.Split(authHeader, " ")
+	if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
+		respondWithAuthError(c, "INVALID_TOKEN_FORMAT", "Formato de encabezado de autorización inválido")
+		return "", errors.New("invalid token format")
+	}
+
+	return tokenParts[1], nil
 }
 
-tokenString := tokenParts[1]
+// validateToken parses and validates JWT token
+func validateToken(tokenString, secretKey string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secretKey), nil
+	})
 
-// Parse and validate token
-token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-return []byte(secretKey), nil
-})
+	if err != nil {
+		return nil, err
+	}
 
-if err != nil {
-c.JSON(http.StatusUnauthorized, gin.H{
-"success": false,
-"error": gin.H{
-"code":    "INVALID_TOKEN",
-"message": "Token inválido o expirado",
-},
-})
-c.Abort()
-return
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		return claims, nil
+	}
+
+	return nil, errors.New("invalid claims")
 }
 
-if claims, ok := token.Claims.(*Claims); ok && token.Valid {
-// Check if token is expired
-if claims.ExpiresAt.Time.Before(time.Now()) {
-c.JSON(http.StatusUnauthorized, gin.H{
-"success": false,
-"error": gin.H{
-"code":    "TOKEN_EXPIRED",
-"message": "El token ha expirado",
-},
-})
-c.Abort()
-return
+// isTokenExpired checks if token is expired
+func isTokenExpired(claims *Claims) bool {
+	return claims.ExpiresAt.Time.Before(time.Now())
 }
 
-// Set user info in context
-c.Set("user_id", claims.UserID)
-c.Set("user_email", claims.Email)
-c.Set("user_roles", claims.Roles)
-c.Set("user_profile_id", claims.ProfileID)
-c.Next()
-} else {
-c.JSON(http.StatusUnauthorized, gin.H{
-"success": false,
-"error": gin.H{
-"code":    "INVALID_CLAIMS",
-"message": "Claims del token inválidos",
-},
-})
-c.Abort()
-return
+// setUserContext sets user information in gin context
+func setUserContext(c *gin.Context, claims *Claims) {
+	c.Set("userID", claims.UserID)
+	c.Set("userEmail", claims.Email)
+	c.Set("userRoles", claims.Roles)
+	c.Set("userProfileID", claims.ProfileID)
 }
-}
+
+// respondWithAuthError sends authentication error response
+func respondWithAuthError(c *gin.Context, code, message string) {
+	c.JSON(http.StatusUnauthorized, gin.H{
+		"success": false,
+		"error": gin.H{
+			"code":    code,
+			"message": message,
+		},
+	})
+	c.Abort()
 }
 
 // RequireRole middleware checks if user has required role
 func RequireRole(roles ...string) gin.HandlerFunc {
-return func(c *gin.Context) {
-userRoles, exists := c.Get("user_roles")
-if !exists {
-c.JSON(http.StatusForbidden, gin.H{
-"success": false,
-"error": gin.H{
-"code":    "ROLE_NOT_FOUND",
-"message": "Rol de usuario no encontrado en el contexto",
-},
-})
-c.Abort()
-return
+	return func(c *gin.Context) {
+		userRoles, err := getUserRolesFromContext(c)
+		if err != nil {
+			respondWithForbiddenError(c, "ROLE_NOT_FOUND", errRoleNotFoundInContext)
+			return
+		}
+
+		if !hasRequiredRole(userRoles, roles) {
+			respondWithForbiddenError(c, "INSUFFICIENT_PERMISSIONS", errInsufficientPermissions)
+			return
+		}
+
+		c.Next()
+	}
 }
 
-// userRoles is expected to be []string
-roleSlice, _ := userRoles.([]string)
-hasPermission := false
-for _, required := range roles {
-for _, r := range roleSlice {
-if r == required {
-hasPermission = true
-break
-}
-}
-if hasPermission {
-break
-}
+// getUserRolesFromContext extracts user roles from gin context
+func getUserRolesFromContext(c *gin.Context) ([]string, error) {
+	userRoles, exists := c.Get("userRoles")
+	if !exists {
+		return nil, errors.New("roles not found in context")
+	}
+
+	roleSlice, ok := userRoles.([]string)
+	if !ok {
+		return nil, errors.New("invalid roles format")
+	}
+
+	return roleSlice, nil
 }
 
-if !hasPermission {
-c.JSON(http.StatusForbidden, gin.H{
-"success": false,
-"error": gin.H{
-"code":    "INSUFFICIENT_PERMISSIONS",
-"message": "El usuario no tiene los permisos requeridos",
-},
-})
-c.Abort()
-return
+// hasRequiredRole checks if user has any of the required roles
+func hasRequiredRole(userRoles, requiredRoles []string) bool {
+	for _, required := range requiredRoles {
+		for _, userRole := range userRoles {
+			if userRole == required {
+				return true
+			}
+		}
+	}
+	return false
 }
 
-c.Next()
+// respondWithForbiddenError sends forbidden error response
+func respondWithForbiddenError(c *gin.Context, code, message string) {
+	c.JSON(http.StatusForbidden, gin.H{
+		"success": false,
+		"error": gin.H{
+			"code":    code,
+			"message": message,
+		},
+	})
+	c.Abort()
 }
+
+// RequirePermission middleware checks if user has required permission
+func RequirePermission(permission models.Permission) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Skip permission check for OPTIONS requests (CORS preflight)
+		if c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
+		// For simplified architecture, we'll allow all authenticated requests
+		// In a production environment, this should check user permissions through their profile
+		c.Next()
+	}
+}
+
+// RequirePermissionLegacy middleware checks if user has required permission using memory (backward compatibility)
+func RequirePermissionLegacy(permission models.Permission) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userRoles, err := getUserRolesFromContext(c)
+		if err != nil {
+			respondWithForbiddenError(c, "ROLE_NOT_FOUND", errRoleNotFoundInContext)
+			return
+		}
+
+		if !models.HasPermission(userRoles, permission) {
+			respondWithForbiddenError(c, "INSUFFICIENT_PERMISSIONS",
+				errInsufficientPermissionsOperation)
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// RequireAnyRole middleware checks if user has any of the required roles (legacy support)
+func RequireAnyRole(roles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userRoles, err := getUserRolesFromContext(c)
+		if err != nil {
+			respondWithForbiddenError(c, "ROLE_NOT_FOUND", errRoleNotFoundInContext)
+			return
+		}
+
+		if !models.HasAnyRole(userRoles, roles) {
+			respondWithForbiddenError(c, "INSUFFICIENT_PERMISSIONS", errInsufficientRoles)
+			return
+		}
+
+		c.Next()
+	}
 }

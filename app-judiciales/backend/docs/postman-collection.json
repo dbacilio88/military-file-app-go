@@ -1,9 +1,9 @@
 {
   "info": {
-    "name": "Sistema Expedientes Judiciales API",
-    "description": "Colección completa de endpoints para el sistema de gestión de expedientes judiciales",
+    "name": "Sistema Expedientes Militares API",
+    "description": "Colección completa de endpoints para el sistema de gestión de expedientes militares",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_postman_id": "expedientes-api-collection",
+    "_postman_id": "expedientes-militares-api-collection",
     "version": "1.0.0"
   },
   "auth": {
@@ -83,7 +83,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@judiciales.com\",\n  \"password\": \"admin123\"\n}"
+              "raw": "{\n  \"email\": \"admin@sistema.mil\",\n  \"password\": \"admin123\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",

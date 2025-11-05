@@ -126,7 +126,6 @@ func (s *AuthService) generateAccessToken(user *models.User) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id":    user.ID.Hex(),
 		"email":      user.Email,
-		"roles":      user.Roles,
 		"profile_id": profileID,
 		"exp":        time.Now().Add(s.jwtExpiration).Unix(),
 		"iat":        time.Now().Unix(),

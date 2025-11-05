@@ -1,336 +1,63 @@
 openapi: 3.0.3
 info:
-  title: Sistema de Expedientes Judiciales API
+  title: Sistema de Expedientes Militares API
   description: |
-    API REST para el sistema de gestión de expedientes judiciales.
-    
-    ## Características
-    - Autenticación JWT
-    - Sistema de perfiles y roles granulares
-    - Gestión completa de expedientes, movimientos y juzgados
-    - Auditoría de operaciones
+    API REST para el sistema de gestión de expedientes militares
     
     ## Autenticación
-    La mayoría de los endpoints requieren un token JWT válido. 
-    Incluir el token en el header: `Authorization: Bearer {token}`
     
-    ## Roles Disponibles
-    - `crear` - Crear nuevos registros
-    - `eliminar` - Eliminar registros
-    - `actualizar` - Modificar registros
-    - `leer` - Consultar/listar registros
-    - `imprimir` - Generar documentos imprimibles
-    - `exportar` - Exportar datos
-    - `importar` - Importar datos
-    - `ver` - Visualizar detalles
+    Esta API utiliza autenticación Bearer Token (JWT). Para usar los endpoints protegidos:
     
+    1. **Primero, obtén un token** haciendo login en `/auth/login`
+    2. **Autorízate en Swagger UI** haciendo clic en el botón "Authorize" 🔒 arriba
+    3. **Ingresa el token** en el formato: `Bearer tu_token_aquí`
+    4. **Haz clic en "Authorize"** y luego "Close"
+    
+    ### Ejemplo de autorización:
+    ```
+    Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    ```
+    
+    ### Credenciales por defecto:
+    - **Email:** admin@sistema.mil
+    - **Password:** admin123
+    
+    Una vez autorizado, podrás usar todos los endpoints protegidos.
   version: 1.0.0
   contact:
     name: Soporte API
-    email: soporte@expedientes.com
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
+    email: soporte@sistema.mil
 
 servers:
-  - url: http://localhost:8080/api/v1
+  - url: http://localhost:8082/api/v1
     description: Servidor de desarrollo
-  - url: https://api.expedientes.com/v1
-    description: Servidor de producción
 
 tags:
   - name: Auth
     description: Autenticación y autorización
   - name: Users
     description: Gestión de usuarios
-  - name: Profiles
-    description: Gestión de perfiles y roles
   - name: Expedientes
-    description: Gestión de expedientes judiciales
-  - name: Movimientos
-    description: Gestión de movimientos procesales
-  - name: Juzgados
-    description: Gestión de juzgados
+    description: Gestión de expedientes militares
   - name: Dashboard
-    description: Estadísticas y métricas
-
-components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: Token JWT obtenido del endpoint /auth/login
-
-  schemas:
-    Error:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: false
-        error:
-          type: object
-          properties:
-            code:
-              type: string
-              example: "VALIDATION_ERROR"
-            message:
-              type: string
-              example: "Error en la validación de datos"
-            details:
-              type: string
-              example: "El email es requerido"
-
-    User:
-      type: object
-      properties:
-        id:
-          type: string
-          example: "507f1f77bcf86cd799439011"
-        email:
-          type: string
-          format: email
-          example: "usuario@example.com"
-        nombre:
-          type: string
-          example: "Juan"
-        apellido:
-          type: string
-          example: "Pérez"
-        documento:
-          type: string
-          example: "12345678"
-        telefono:
-          type: string
-          example: "+54 11 1234-5678"
-        profile_id:
-          type: string
-          example: "507f1f77bcf86cd799439012"
-        roles:
-          type: array
-          items:
-            type: string
-          example: ["crear", "leer", "actualizar"]
-        activo:
-          type: boolean
-          example: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    Profile:
-      type: object
-      properties:
-        id:
-          type: string
-          example: "507f1f77bcf86cd799439012"
-        name:
-          type: string
-          example: "Administrador"
-        slug:
-          type: string
-          example: "administrador"
-        roles:
-          type: array
-          items:
-            type: string
-          example: ["crear", "eliminar", "actualizar", "leer"]
-        active:
-          type: boolean
-          example: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    LoginRequest:
-      type: object
-      required:
-        - email
-        - password
-      properties:
-        email:
-          type: string
-          format: email
-          example: "admin@judiciales.com"
-        password:
-          type: string
-          format: password
-          example: "admin123"
-
-    AuthResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        data:
-          type: object
-          properties:
-            user:
-              $ref: '#/components/schemas/User'
-            access_token:
-              type: string
-              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-            refresh_token:
-              type: string
-              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-            expires_at:
-              type: string
-              format: date-time
-
-    CreateUserRequest:
-      type: object
-      required:
-        - email
-        - password
-        - nombre
-        - apellido
-        - documento
-      properties:
-        email:
-          type: string
-          format: email
-          description: "Email válido del usuario"
-          example: "usuario@example.com"
-        password:
-          type: string
-          format: password
-          minLength: 6
-          description: "Contraseña con mínimo 6 caracteres"
-          example: "password123"
-        nombre:
-          type: string
-          minLength: 1
-          description: "Nombre del usuario (requerido)"
-          example: "Juan"
-        apellido:
-          type: string
-          minLength: 1
-          description: "Apellido del usuario (requerido)"
-          example: "Pérez"
-        documento:
-          type: string
-          minLength: 1
-          description: "Número de documento de identidad (requerido)"
-          example: "12345678"
-        telefono:
-          type: string
-          pattern: "^\\+?[1-9]\\d{1,14}$"
-          description: "Número de teléfono (opcional)"
-          example: "+54 11 1234-5678"
-        profile_id:
-          type: string
-          description: "ID del perfil a asignar (opcional)"
-          example: "507f1f77bcf86cd799439012"
-        roles:
-          type: array
-          items:
-            type: string
-            enum: ["crear", "eliminar", "actualizar", "leer", "imprimir", "exportar", "importar", "ver"]
-          description: "Array de roles a asignar al usuario"
-          example: ["leer", "crear", "actualizar"]
-
-    Expediente:
-      type: object
-      properties:
-        id:
-          type: string
-        numero_expediente:
-          type: string
-          example: "EXP-2024-0001"
-        caratula:
-          type: string
-          example: "Pérez Juan c/ Constructora ABC s/ Daños y Perjuicios"
-        actor:
-          type: string
-          example: "Juan Pérez"
-        demandado:
-          type: string
-          example: "Constructora ABC S.A."
-        juzgado_id:
-          type: string
-        estado:
-          type: string
-          enum: [activo, archivado, suspendido, concluido]
-          example: "activo"
-        fecha_inicio:
-          type: string
-          format: date
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    Movimiento:
-      type: object
-      properties:
-        id:
-          type: string
-        expediente_id:
-          type: string
-        tipo:
-          type: string
-          enum: [audiencia, resolucion, escrito, notificacion, diligencia, otro]
-        descripcion:
-          type: string
-        fecha:
-          type: string
-          format: date-time
-        ubicacion:
-          type: string
-        estado:
-          type: string
-          enum: [pendiente, realizado, cancelado]
-        created_at:
-          type: string
-          format: date-time
-
-    Juzgado:
-      type: object
-      properties:
-        id:
-          type: string
-        nombre:
-          type: string
-          example: "Juzgado Civil N° 1"
-        tipo:
-          type: string
-          enum: [civil, penal, laboral, familia, comercial]
-        codigo:
-          type: string
-          example: "JUZ001"
-        direccion:
-          type: string
-        telefono:
-          type: string
-        email:
-          type: string
-        juez:
-          type: string
-        secretario:
-          type: string
-        activo:
-          type: boolean
+    description: Estadísticas y métricas del sistema
+  - name: Profiles
+    description: Gestión de perfiles y roles de usuario
+  - name: Permissions
+    description: Gestión de permisos del sistema
+  - name: System
+    description: Información del sistema
 
 paths:
   /health:
     get:
-      summary: Health Check
-      description: Verifica el estado del servicio
       tags:
-        - Health
+        - System
+      summary: Health check del sistema
+      description: Endpoint para verificar el estado del sistema. Disponible en `/api/v1/health`
       responses:
         '200':
-          description: Servicio funcionando correctamente
+          description: Servidor funcionando correctamente
           content:
             application/json:
               schema:
@@ -338,272 +65,59 @@ paths:
                 properties:
                   status:
                     type: string
-                    example: "ok"
+                    example: ok
                   timestamp:
                     type: string
                     format: date-time
+                    example: "2025-11-05T09:16:19.0261846Z"
                   service:
                     type: string
                     example: "expedientes-backend"
 
   /auth/login:
     post:
-      summary: Iniciar sesión
-      description: Autentica un usuario y devuelve tokens JWT
       tags:
         - Auth
+      summary: Iniciar sesión
+      description: |
+        Autentica un usuario y devuelve un token JWT.
+        
+        **Pasos para usar la API:**
+        1. Usa este endpoint para obtener tu token
+        2. Copia el token de la respuesta
+        3. Haz clic en "Authorize" 🔒 arriba de esta página
+        4. Pega el token en el campo (formato: `Bearer tu_token`)
+        5. Ya puedes usar todos los endpoints protegidos
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: admin@sistema.mil
+              password: admin123
       responses:
         '200':
-          description: Login exitoso
+          description: Login exitoso - Copia el token de la respuesta para autorización
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                $ref: '#/components/schemas/LoginResponse'
         '401':
-          description: Credenciales inválidas
+          description: Credenciales incorrectas
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-
-  /auth/refresh:
-    post:
-      summary: Renovar token de acceso
-      description: Genera un nuevo access token usando el refresh token
-      tags:
-        - Auth
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - refresh_token
-              properties:
-                refresh_token:
-                  type: string
-      responses:
-        '200':
-          description: Token renovado exitosamente
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '401':
-          description: Refresh token inválido o expirado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /auth/logout:
-    post:
-      summary: Cerrar sesión
-      description: Invalida los tokens del usuario actual
-      tags:
-        - Auth
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Sesión cerrada exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  message:
-                    type: string
-                    example: "Sesión cerrada exitosamente"
-
-  /users/form-config:
-    get:
-      summary: Obtener configuración del formulario de usuario
-      description: Obtiene información sobre campos requeridos, validaciones y roles disponibles para el formulario de crear/editar usuario
-      tags:
-        - Users
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Configuración del formulario
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    type: object
-                    properties:
-                      required_fields:
-                        type: array
-                        items:
-                          type: string
-                        example: ["email", "password", "nombre", "apellido", "documento"]
-                      field_validations:
-                        type: object
-                        properties:
-                          email:
-                            type: object
-                            properties:
-                              type:
-                                type: string
-                                example: "email"
-                              required:
-                                type: boolean
-                                example: true
-                              message:
-                                type: string
-                                example: "Debe ser un email válido"
-                          password:
-                            type: object
-                            properties:
-                              type:
-                                type: string
-                                example: "password"
-                              required:
-                                type: boolean
-                                example: true
-                              min_length:
-                                type: integer
-                                example: 6
-                              message:
-                                type: string
-                                example: "La contraseña debe tener al menos 6 caracteres"
-                          nombre:
-                            type: object
-                            properties:
-                              type:
-                                type: string
-                                example: "text"
-                              required:
-                                type: boolean
-                                example: true
-                              message:
-                                type: string
-                                example: "El nombre es requerido"
-                          apellido:
-                            type: object
-                            properties:
-                              type:
-                                type: string
-                                example: "text"
-                              required:
-                                type: boolean
-                                example: true
-                              message:
-                                type: string
-                                example: "El apellido es requerido"
-                          documento:
-                            type: object
-                            properties:
-                              type:
-                                type: string
-                                example: "text"
-                              required:
-                                type: boolean
-                                example: true
-                              message:
-                                type: string
-                                example: "El documento es requerido"
-                          telefono:
-                            type: object
-                            properties:
-                              type:
-                                type: string
-                                example: "tel"
-                              required:
-                                type: boolean
-                                example: false
-                              pattern:
-                                type: string
-                                example: "^\\+?[1-9]\\d{1,14}$"
-                              message:
-                                type: string
-                                example: "Formato de teléfono inválido"
-                      available_roles:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            value:
-                              type: string
-                            label:
-                              type: string
-                            description:
-                              type: string
-                        example:
-                          - value: "crear"
-                            label: "Crear"
-                            description: "Crear nuevos registros"
-                          - value: "leer"
-                            label: "Leer"
-                            description: "Consultar y visualizar información"
-                          - value: "actualizar"
-                            label: "Actualizar"
-                            description: "Modificar registros existentes"
-                          - value: "eliminar"
-                            label: "Eliminar"
-                            description: "Eliminar registros existentes"
-                          - value: "imprimir"
-                            label: "Imprimir"
-                            description: "Generar reportes e impresiones"
-                          - value: "exportar"
-                            label: "Exportar"
-                            description: "Exportar datos a archivos externos"
-                          - value: "importar"
-                            label: "Importar"
-                            description: "Importar datos desde archivos externos"
-                          - value: "ver"
-                            label: "Ver"
-                            description: "Visualizar información del sistema"
-                      available_profiles:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/Profile'
+                $ref: '#/components/schemas/ErrorResponse'
 
   /users:
     get:
-      summary: Listar usuarios
-      description: Obtiene una lista paginada de usuarios
       tags:
         - Users
+      summary: Listar usuarios
       security:
         - BearerAuth: []
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 10
-        - name: sort_by
-          in: query
-          schema:
-            type: string
-            default: created_at
-        - name: sort_order
-          in: query
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: desc
       responses:
         '200':
           description: Lista de usuarios
@@ -614,26 +128,22 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    example: true
                   data:
                     type: array
                     items:
                       $ref: '#/components/schemas/User'
-                  pagination:
-                    type: object
-                    properties:
-                      page:
-                        type: integer
-                      limit:
-                        type: integer
-                      total:
-                        type: integer
-                      total_pages:
-                        type: integer
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
     post:
-      summary: Crear usuario
-      description: Crea un nuevo usuario con perfil y roles
       tags:
         - Users
+      summary: Crear usuario
       security:
         - BearerAuth: []
       requestBody:
@@ -641,7 +151,35 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateUserRequest'
+              type: object
+              required:
+                - email
+                - nombre
+                - apellido
+                - documento
+                - password
+                - profile_id
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: usuario@sistema.mil
+                nombre:
+                  type: string
+                  example: Juan
+                apellido:
+                  type: string
+                  example: Pérez
+                documento:
+                  type: string
+                  example: 12345678
+                password:
+                  type: string
+                  minLength: 8
+                  example: password123
+                profile_id:
+                  type: string
+                  example: 507f1f77bcf86cd799439011
       responses:
         '201':
           description: Usuario creado exitosamente
@@ -652,6 +190,7 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    example: true
                   data:
                     $ref: '#/components/schemas/User'
         '400':
@@ -659,14 +198,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /users/{id}:
     get:
-      summary: Obtener usuario
-      description: Obtiene los detalles de un usuario específico
       tags:
         - Users
+      summary: Obtener usuario por ID
       security:
         - BearerAuth: []
       parameters:
@@ -677,7 +221,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Detalles del usuario
+          description: Usuario encontrado
           content:
             application/json:
               schema:
@@ -685,6 +229,7 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    example: true
                   data:
                     $ref: '#/components/schemas/User'
         '404':
@@ -692,12 +237,18 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
     put:
-      summary: Actualizar usuario
-      description: Actualiza la información de un usuario
       tags:
         - Users
+      summary: Actualizar usuario
       security:
         - BearerAuth: []
       parameters:
@@ -713,18 +264,17 @@ paths:
             schema:
               type: object
               properties:
+                email:
+                  type: string
+                  format: email
                 nombre:
                   type: string
                 apellido:
                   type: string
-                telefono:
+                documento:
                   type: string
-                profile_id:
-                  type: string
-                roles:
-                  type: array
-                  items:
-                    type: string
+                activo:
+                  type: boolean
       responses:
         '200':
           description: Usuario actualizado exitosamente
@@ -735,13 +285,26 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    example: true
                   data:
                     $ref: '#/components/schemas/User'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
     delete:
-      summary: Eliminar usuario
-      description: Elimina un usuario (soft delete)
       tags:
         - Users
+      summary: Eliminar usuario
       security:
         - BearerAuth: []
       parameters:
@@ -756,19 +319,285 @@ paths:
           content:
             application/json:
               schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/profile:
+    get:
+      tags:
+        - Users
+      summary: Obtener perfil del usuario actual
+      description: Obtiene la información del perfil del usuario autenticado
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Perfil del usuario actual
+          content:
+            application/json:
+              schema:
                 type: object
                 properties:
                   success:
                     type: boolean
-                  message:
-                    type: string
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
-  /users/{id}/roles:
-    post:
-      summary: Añadir rol a usuario
-      description: Añade un rol específico a un usuario
+    put:
       tags:
         - Users
+      summary: Actualizar perfil del usuario actual
+      description: Permite al usuario actualizar su propia información de perfil
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  example: "Juan Carlos"
+                apellido:
+                  type: string
+                  example: "Pérez García"
+                telefono:
+                  type: string
+                  example: "+591 70123456"
+              example:
+                nombre: "Juan Carlos"
+                apellido: "Pérez García"  
+                telefono: "+591 70123456"
+      responses:
+        '200':
+          description: Perfil actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/User'
+                  message:
+                    type: string
+                    example: "perfil actualizado exitosamente"
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/password:
+    put:
+      tags:
+        - Users
+      summary: Cambiar contraseña del usuario actual
+      description: Permite al usuario cambiar su propia contraseña
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - current_password
+                - new_password
+              properties:
+                current_password:
+                  type: string
+                  example: "password123"
+                  description: "Contraseña actual del usuario"
+                new_password:
+                  type: string
+                  minLength: 8
+                  example: "newPassword456"
+                  description: "Nueva contraseña (mínimo 8 caracteres)"
+              example:
+                current_password: "password123"
+                new_password: "newPassword456"
+      responses:
+        '200':
+          description: Contraseña actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "contraseña actualizada exitosamente"
+        '400':
+          description: Error de validación o contraseña actual incorrecta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /expedientes:
+    get:
+      tags:
+        - Expedientes
+      summary: Listar expedientes militares
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: grado
+          in: query
+          schema:
+            type: string
+            enum: [GRAL, CRL, TTE CRL, MY, CAP, TTE, STTE, TCO, SSOO, EC, TROPA]
+        - name: situacion_militar
+          in: query
+          schema:
+            type: string
+            enum: [Actividad, Retiro]
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: [dentro, fuera]
+      responses:
+        '200':
+          description: Lista de expedientes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Expediente'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Expedientes
+      summary: Crear expediente militar
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExpedienteRequest'
+      responses:
+        '201':
+          description: Expediente creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Expediente'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /expedientes/{id}:
+    get:
+      tags:
+        - Expedientes
+      summary: Obtener expediente por ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expediente encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Expediente'
+        '404':
+          description: Expediente no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Expedientes
+      summary: Actualizar expediente
       security:
         - BearerAuth: []
       parameters:
@@ -782,21 +611,37 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - role
-              properties:
-                role:
-                  type: string
-                  example: "exportar"
+              $ref: '#/components/schemas/UpdateExpedienteRequest'
       responses:
         '200':
-          description: Rol añadido exitosamente
+          description: Expediente actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Expediente'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Expediente no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
     delete:
-      summary: Quitar rol de usuario
-      description: Remueve un rol específico de un usuario
       tags:
-        - Users
+        - Expedientes
+      summary: Eliminar expediente
       security:
         - BearerAuth: []
       parameters:
@@ -805,21 +650,320 @@ paths:
           required: true
           schema:
             type: string
-        - name: role
+      responses:
+        '200':
+          description: Expediente eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Expediente no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /expedientes/search:
+    get:
+      tags:
+        - Expedientes
+      summary: Buscar expedientes
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: q
           in: query
-          required: true
+          description: Término de búsqueda
+          schema:
+            type: string
+        - name: grado
+          in: query
+          schema:
+            type: string
+            enum: [GRAL, CRL, TTE CRL, MY, CAP, TTE, STTE, TCO, SSOO, EC, TROPA]
+        - name: cip
+          in: query
           schema:
             type: string
       responses:
         '200':
-          description: Rol removido exitosamente
+          description: Resultados de búsqueda
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Expediente'
+
+  /expedientes/bulk-import:
+    post:
+      tags:
+        - Expedientes
+      summary: Importación masiva de expedientes desde Excel
+      description: |
+        Permite importar múltiples expedientes desde un archivo Excel (.xlsx o .xls).
+        
+        **Formato del archivo Excel:**
+        - Primera fila debe contener los encabezados exactos: `Grado`, `CIP`, `ApellidosNombres`, `NumeroPaginas`
+        - Valores válidos para Grado: GRAL, CRL, TTE CRL, MY, CAP, TTE, STTE, TCO, SSOO, EC, TROPA
+        - CIP debe ser único (no puede existir en la base de datos)
+        - ApellidosNombres debe tener al menos 3 caracteres
+        - NumeroPaginas debe ser un número entero mayor a 0
+        
+        **Valores por defecto asignados:**
+        - SituacionMilitar: "Actividad"
+        - Estado: "dentro" 
+        - Ubicacion: "Archivo Central"
+        - Orden: Asignado automáticamente
+        
+        **Restricciones:**
+        - Tamaño máximo del archivo: 10MB
+        - Solo archivos .xlsx o .xls
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Archivo Excel con los expedientes a importar
+              required:
+                - file
+            example:
+              file: "expedientes.xlsx"
+      responses:
+        '200':
+          description: Importación completada exitosamente (todos los registros importados)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/BulkImportResult'
+                  message:
+                    type: string
+                    example: "Todos los expedientes fueron importados exitosamente."
+        '206':
+          description: Importación parcial (algunos registros con errores)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/BulkImportResult'
+                  message:
+                    type: string
+                    example: "Importación parcial completada. Algunos registros tuvieron errores."
+        '400':
+          description: Error en la importación (ningún registro importado) o archivo inválido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  data:
+                    $ref: '#/components/schemas/BulkImportResult'
+                  message:
+                    type: string
+                    example: "No se pudieron importar expedientes. Revise los errores y corrija el archivo Excel."
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sin permisos suficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dashboard/stats:
+    get:
+      tags:
+        - Dashboard
+      summary: Obtener estadísticas del dashboard (público para pruebas)
+      description: |
+        Obtiene estadísticas comprehensivas para el dashboard, incluyendo:
+        - Resumen general (totales, porcentajes)
+        - Estadísticas por grado militar
+        - Estadísticas por estado (dentro/fuera)
+        - Estadísticas por situación militar (actividad/retiro)
+        - Estadísticas por ubicación (top 10)
+        - Estadísticas temporales (por mes/año)
+        
+        **Nota:** Este endpoint está temporalmente disponible sin autenticación para pruebas.
+      responses:
+        '200':
+          description: Estadísticas del dashboard obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Dashboard statistics retrieved successfully"
+                  data:
+                    $ref: '#/components/schemas/DashboardStats'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /expedientes/dashboard/stats:
+    get:
+      tags:
+        - Dashboard
+        - Expedientes
+      summary: Obtener estadísticas completas del dashboard
+      description: |
+        Obtiene estadísticas comprehensivas para el dashboard, incluyendo:
+        - Resumen general (totales, porcentajes)
+        - Estadísticas por grado militar
+        - Estadísticas por estado (dentro/fuera)
+        - Estadísticas por situación militar (actividad/retiro)
+        - Estadísticas por ubicación (top 10)
+        - Estadísticas temporales (por mes/año)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Estadísticas del dashboard obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Dashboard statistics retrieved successfully"
+                  data:
+                    $ref: '#/components/schemas/DashboardStats'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sin permisos suficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dashboard/stats:
+    get:
+      tags:
+        - Dashboard
+      summary: Obtener estadísticas completas del dashboard
+      description: |
+        **Endpoint principal del dashboard** - Obtiene estadísticas comprehensivas organizadas por categorías:
+        
+        ### 📊 **Resumen General**
+        - Total de expedientes registrados
+        - Distribución por estado (dentro/fuera)
+        - Distribución por situación militar (actividad/retiro)
+        - Promedio de páginas por expediente
+        - Total de páginas y ubicaciones únicas
+        
+        ### 🎖️ **Estadísticas por Grado Militar**
+        - Distribución por cada uno de los 11 grados militares
+        - Cantidad por estado y situación militar para cada grado
+        - Porcentajes relativos y total de páginas
+        
+        ### 📍 **Estadísticas por Ubicación**
+        - Top 10 ubicaciones con mayor cantidad de expedientes
+        - Distribución porcentual por ubicación
+        
+        ### 📅 **Estadísticas Temporales**
+        - Registros por mes (últimos 12 meses)
+        - Registros por año
+        - Tendencia mensual (creciente/decreciente/estable)
+        - Registros de los últimos 30 días
+        
+        **Permisos requeridos:** PermissionExpedienteRead
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Estadísticas del dashboard obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Dashboard statistics retrieved successfully"
+                  data:
+                    $ref: '#/components/schemas/DashboardStats'
+        '401':
+          description: No autorizado - Token no válido o faltante
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Acceso denegado - Sin permisos de lectura de expedientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /profiles:
     get:
-      summary: Listar perfiles
-      description: Obtiene todos los perfiles disponibles
       tags:
         - Profiles
+      summary: Listar perfiles del sistema
       security:
         - BearerAuth: []
       responses:
@@ -832,15 +976,22 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    example: true
                   data:
                     type: array
                     items:
                       $ref: '#/components/schemas/Profile'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
     post:
-      summary: Crear perfil
-      description: Crea un nuevo perfil con roles específicos
       tags:
         - Profiles
+      summary: Crear nuevo perfil
       security:
         - BearerAuth: []
       requestBody:
@@ -848,55 +999,21 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - name
-                - slug
-                - roles
-              properties:
-                name:
-                  type: string
-                  example: "Secretario Judicial"
-                slug:
-                  type: string
-                  example: "secretario"
-                roles:
-                  type: array
-                  items:
-                    type: string
-                  example: ["leer", "crear", "actualizar"]
+              $ref: '#/components/schemas/CreateProfileRequest'
+            example:
+              name: "Operador"
+              slug: "operador"
+              description: "Perfil para operadores del sistema"
+              permissions:
+                - resource: "expedientes"
+                  action: "read"
+                  description: "Leer expedientes"
+                - resource: "expedientes"
+                  action: "create"
+                  description: "Crear expedientes"
       responses:
         '201':
           description: Perfil creado exitosamente
-
-  /expedientes:
-    get:
-      summary: Listar expedientes
-      description: Obtiene una lista paginada de expedientes
-      tags:
-        - Expedientes
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-        - name: limit
-          in: query
-          schema:
-            type: integer
-        - name: estado
-          in: query
-          schema:
-            type: string
-        - name: search
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Lista de expedientes
           content:
             application/json:
               schema:
@@ -904,50 +1021,136 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    example: true
                   data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Expediente'
-    post:
-      summary: Crear expediente
-      description: Crea un nuevo expediente judicial
+                    $ref: '#/components/schemas/Profile'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El slug del perfil ya existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /profiles/{id}:
+    get:
       tags:
-        - Expedientes
+        - Profiles
+      summary: Obtener perfil por ID
       security:
         - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "507f1f77bcf86cd799439011"
+      responses:
+        '200':
+          description: Perfil encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Profile'
+        '404':
+          description: Perfil no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Profiles
+      summary: Actualizar perfil
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required:
-                - caratula
-                - actor
-                - demandado
-                - juzgado_id
               properties:
-                caratula:
+                name:
                   type: string
-                actor:
+                  example: "Operador Avanzado"
+                description:
                   type: string
-                demandado:
-                  type: string
-                juzgado_id:
-                  type: string
-                fecha_inicio:
-                  type: string
-                  format: date
+                  example: "Perfil para operadores con permisos extendidos"
+                permissions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Permission'
+                active:
+                  type: boolean
+                  example: true
       responses:
-        '201':
-          description: Expediente creado exitosamente
+        '200':
+          description: Perfil actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Profile'
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Perfil no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: No se puede modificar perfil del sistema
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
-  /expedientes/{id}:
-    get:
-      summary: Obtener expediente
-      description: Obtiene los detalles de un expediente específico
+    delete:
       tags:
-        - Expedientes
+        - Profiles
+      summary: Eliminar perfil
       security:
         - BearerAuth: []
       parameters:
@@ -958,34 +1161,40 @@ paths:
             type: string
       responses:
         '200':
-          description: Detalles del expediente
+          description: Perfil eliminado exitosamente
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    $ref: '#/components/schemas/Expediente'
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Perfil no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: No se puede eliminar perfil del sistema o perfil en uso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
-  /movimientos/expediente/{expedienteId}:
+  /profiles/{id}/permissions:
     get:
-      summary: Listar movimientos de un expediente
-      description: Obtiene todos los movimientos de un expediente específico
       tags:
-        - Movimientos
+        - Profiles
+      summary: Obtener permisos de un perfil
       security:
         - BearerAuth: []
       parameters:
-        - name: expedienteId
+        - name: id
           in: path
           required: true
           schema:
             type: string
       responses:
         '200':
-          description: Lista de movimientos
+          description: Lista de permisos del perfil
           content:
             application/json:
               schema:
@@ -993,22 +1202,73 @@ paths:
                 properties:
                   success:
                     type: boolean
+                    example: true
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Movimiento'
+                      $ref: '#/components/schemas/Permission'
 
-  /juzgados:
-    get:
-      summary: Listar juzgados
-      description: Obtiene todos los juzgados disponibles
+    put:
       tags:
-        - Juzgados
+        - Profiles
+      summary: Actualizar permisos de un perfil
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - permissions
+              properties:
+                permissions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Permission'
+              example:
+                permissions:
+                  - resource: "expedientes"
+                    action: "read"
+                    description: "Leer expedientes"
+                  - resource: "expedientes"
+                    action: "create"
+                    description: "Crear expedientes"
+                  - resource: "users"
+                    action: "read"
+                    description: "Leer usuarios"
+      responses:
+        '200':
+          description: Permisos actualizados exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Profile'
+
+  /permissions:
+    get:
+      tags:
+        - Permissions
+      summary: Listar todos los permisos disponibles
+      description: Obtiene la lista completa de permisos disponibles en el sistema
       security:
         - BearerAuth: []
       responses:
         '200':
-          description: Lista de juzgados
+          description: Lista de permisos disponibles
           content:
             application/json:
               schema:
@@ -1016,37 +1276,679 @@ paths:
                 properties:
                   success:
                     type: boolean
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Juzgado'
-
-  /dashboard/stats:
-    get:
-      summary: Obtener estadísticas del dashboard
-      description: Obtiene métricas y estadísticas generales del sistema
-      tags:
-        - Dashboard
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Estadísticas del sistema
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
+                    example: true
                   data:
                     type: object
                     properties:
-                      total_expedientes:
-                        type: integer
-                      expedientes_activos:
-                        type: integer
-                      nuevos_este_mes:
-                        type: integer
-                      expedientes_por_estado:
-                        type: object
+                      expedientes:
+                        type: array
+                        items:
+                          type: string
+                        example: ["read", "create", "update", "delete"]
+                      users:
+                        type: array
+                        items:
+                          type: string
+                        example: ["read", "create", "update", "delete"]
+                      profiles:
+                        type: array
+                        items:
+                          type: string
+                        example: ["read", "create", "update", "delete"]
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        nombre:
+          type: string
+        apellido:
+          type: string
+        documento:
+          type: string
+        activo:
+          type: boolean
+        profile_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Expediente:
+      type: object
+      properties:
+        id:
+          type: string
+        grado:
+          type: string
+          enum: [GRAL, CRL, TTE CRL, MY, CAP, TTE, STTE, TCO, SSOO, EC, TROPA]
+        apellidos_nombres:
+          type: string
+          minLength: 3
+        numero_paginas:
+          type: integer
+          minimum: 1
+        situacion_militar:
+          type: string
+          enum: [Actividad, Retiro]
+        cip:
+          type: string
+        estado:
+          type: string
+          enum: [dentro, fuera]
+        ubicacion:
+          type: string
+        fecha_registro:
+          type: string
+          format: date-time
+        fecha_actualizacion:
+          type: string
+          format: date-time
+        orden:
+          type: integer
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+        updated_by:
+          type: string
+
+    CreateExpedienteRequest:
+      type: object
+      required:
+        - grado
+        - apellidos_nombres
+        - numero_paginas
+        - situacion_militar
+        - cip
+        - ubicacion
+        - orden
+      properties:
+        grado:
+          type: string
+          enum: [GRAL, CRL, TTE CRL, MY, CAP, TTE, STTE, TCO, SSOO, EC, TROPA]
+        apellidos_nombres:
+          type: string
+          minLength: 3
+        numero_paginas:
+          type: integer
+          minimum: 1
+        situacion_militar:
+          type: string
+          enum: [Actividad, Retiro]
+        cip:
+          type: string
+        ubicacion:
+          type: string
+        orden:
+          type: integer
+          minimum: 1
+
+    UpdateExpedienteRequest:
+      type: object
+      properties:
+        grado:
+          type: string
+          enum: [GRAL, CRL, TTE CRL, MY, CAP, TTE, STTE, TCO, SSOO, EC, TROPA]
+        apellidos_nombres:
+          type: string
+          minLength: 3
+        numero_paginas:
+          type: integer
+          minimum: 1
+        situacion_militar:
+          type: string
+          enum: [Actividad, Retiro]
+        cip:
+          type: string
+        estado:
+          type: string
+          enum: [dentro, fuera]
+        ubicacion:
+          type: string
+        orden:
+          type: integer
+          minimum: 1
+
+    Profile:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        slug:
+          type: string
+        description:
+          type: string
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+        active:
+          type: boolean
+        is_system:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Permission:
+      type: object
+      properties:
+        resource:
+          type: string
+        action:
+          type: string
+        description:
+          type: string
+
+    CreateProfileRequest:
+      type: object
+      required:
+        - name
+        - slug
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        slug:
+          type: string
+          minLength: 3
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 500
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@sistema.mil
+          description: Email del usuario en el sistema
+        password:
+          type: string
+          minLength: 8
+          example: admin123
+          description: Contraseña del usuario
+      example:
+        email: admin@sistema.mil
+        password: admin123
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+            access_token:
+              type: string
+              example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+              description: Token JWT para autenticación (usar en header Authorization como 'Bearer {token}')
+            refresh_token:
+              type: string
+              example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+              description: Token de renovación
+            expires_at:
+              type: string
+              format: date-time
+              example: 2025-11-04T20:00:00Z
+              description: Fecha y hora de expiración del token
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Credenciales incorrectas"
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+        active:
+          type: boolean
+
+    UpdatePermissionsRequest:
+      type: object
+      required:
+        - permissions
+      properties:
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+          description: Lista completa de permisos para el perfil
+
+    PermissionList:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            expedientes: ["read", "create", "update", "delete"]
+            users: ["read", "create", "update", "delete"]
+            profiles: ["read", "create", "update", "delete"]
+
+    ProfileWithStats:
+      allOf:
+        - $ref: '#/components/schemas/Profile'
+        - type: object
+          properties:
+            user_count:
+              type: integer
+              description: Número de usuarios con este perfil
+              example: 5
+            can_delete:
+              type: boolean
+              description: Indica si el perfil puede ser eliminado
+              example: true
+
+    BulkImportResult:
+      type: object
+      description: Resultado de la importación masiva de expedientes
+      properties:
+        total_procesados:
+          type: integer
+          description: Número total de registros procesados
+          example: 10
+        exitosos:
+          type: integer
+          description: Número de expedientes importados exitosamente
+          example: 8
+        fallidos:
+          type: integer
+          description: Número de registros con errores
+          example: 2
+        errores:
+          type: array
+          description: Lista de errores encontrados durante la importación
+          items:
+            $ref: '#/components/schemas/BulkImportError'
+        expedientes_creados:
+          type: array
+          description: IDs de los expedientes creados exitosamente
+          items:
+            type: string
+            example: "507f1f77bcf86cd799439011"
+
+    BulkImportError:
+      type: object
+      description: Error específico durante la importación masiva
+      properties:
+        fila:
+          type: integer
+          description: Número de fila donde ocurrió el error (incluye encabezado)
+          example: 3
+        campo:
+          type: string
+          description: Campo donde ocurrió el error
+          example: "Grado"
+        valor:
+          type: string
+          description: Valor que causó el error
+          example: "INVALIDO"
+        error:
+          type: string
+          description: Descripción del error
+          example: "Grado debe ser uno de: GRAL, CRL, TTE CRL, MY, CAP, TTE, STTE, TCO, SSOO, EC, TROPA"
+        registro:
+          $ref: '#/components/schemas/BulkImportExpediente'
+
+    BulkImportExpediente:
+      type: object
+      description: Registro de expediente desde Excel antes de procesamiento
+      properties:
+        grado:
+          type: string
+          description: Grado militar como aparece en Excel
+          example: "GRAL"
+        cip:
+          type: string
+          description: CIP como aparece en Excel
+          example: "12345678"
+        apellidos_nombres:
+          type: string
+          description: Apellidos y nombres como aparecen en Excel
+          example: "García, Juan Carlos"
+        numero_paginas:
+          type: string
+          description: Número de páginas como aparece en Excel (string antes de validación)
+          example: "45"
+        fila:
+          type: integer
+          description: Número de fila en el Excel
+          example: 2
+
+    # Dashboard Statistics Schemas
+    DashboardStats:
+      type: object
+      description: Estadísticas completas del dashboard
+      properties:
+        resumen_general:
+          $ref: '#/components/schemas/ResumenGeneral'
+        estadisticas_por_grado:
+          type: array
+          items:
+            $ref: '#/components/schemas/GradoStats'
+        estadisticas_por_estado:
+          type: array
+          items:
+            $ref: '#/components/schemas/EstadoStats'
+        estadisticas_por_situacion:
+          type: array
+          items:
+            $ref: '#/components/schemas/SituacionStats'
+        estadisticas_por_ubicacion:
+          type: array
+          items:
+            $ref: '#/components/schemas/UbicacionStats'
+        estadisticas_temporales:
+          $ref: '#/components/schemas/EstadisticasTemporales'
+        generado_en:
+          type: string
+          format: date-time
+          description: Timestamp de cuando se generaron las estadísticas
+          example: "2025-11-05T10:30:00Z"
+
+    ResumenGeneral:
+      type: object
+      description: Resumen general de estadísticas
+      properties:
+        total_expedientes:
+          type: integer
+          description: Total de expedientes en el sistema
+          example: 1250
+        expedientes_dentro:
+          type: integer
+          description: Expedientes con estado "dentro"
+          example: 890
+        expedientes_fuera:
+          type: integer
+          description: Expedientes con estado "fuera"
+          example: 360
+        porcentaje_dentro:
+          type: number
+          format: float
+          description: Porcentaje de expedientes "dentro"
+          example: 71.2
+        porcentaje_fuera:
+          type: number
+          format: float
+          description: Porcentaje de expedientes "fuera"
+          example: 28.8
+        personal_actividad:
+          type: integer
+          description: Personal en situación de actividad
+          example: 950
+        personal_retiro:
+          type: integer
+          description: Personal en situación de retiro
+          example: 300
+        porcentaje_actividad:
+          type: number
+          format: float
+          description: Porcentaje de personal en actividad
+          example: 76.0
+        porcentaje_retiro:
+          type: number
+          format: float
+          description: Porcentaje de personal en retiro
+          example: 24.0
+        promedio_paginas_por_expediente:
+          type: number
+          format: float
+          description: Promedio de páginas por expediente
+          example: 45.3
+        total_paginas:
+          type: integer
+          description: Total de páginas en todos los expedientes
+          example: 56625
+        ubicaciones_unicas:
+          type: integer
+          description: Número de ubicaciones únicas
+          example: 15
+
+    GradoStats:
+      type: object
+      description: Estadísticas por grado militar
+      properties:
+        grado:
+          type: string
+          enum: ["GRAL", "CRL", "TTE CRL", "MY", "CAP", "TTE", "STTE", "TCO", "SSOO", "EC", "TROPA"]
+          description: Grado militar
+          example: "CAP"
+        total:
+          type: integer
+          description: Total de expedientes de este grado
+          example: 150
+        dentro:
+          type: integer
+          description: Expedientes "dentro" de este grado
+          example: 120
+        fuera:
+          type: integer
+          description: Expedientes "fuera" de este grado
+          example: 30
+        actividad:
+          type: integer
+          description: Personal en actividad de este grado
+          example: 140
+        retiro:
+          type: integer
+          description: Personal en retiro de este grado
+          example: 10
+        porcentaje:
+          type: number
+          format: float
+          description: Porcentaje que representa este grado del total
+          example: 12.0
+        total_paginas:
+          type: integer
+          description: Total de páginas de expedientes de este grado
+          example: 6750
+
+    EstadoStats:
+      type: object
+      description: Estadísticas por estado
+      properties:
+        estado:
+          type: string
+          enum: ["dentro", "fuera"]
+          description: Estado del expediente
+          example: "dentro"
+        total:
+          type: integer
+          description: Total de expedientes en este estado
+          example: 890
+        porcentaje:
+          type: number
+          format: float
+          description: Porcentaje que representa este estado
+          example: 71.2
+        total_paginas:
+          type: integer
+          description: Total de páginas en este estado
+          example: 42500
+
+    SituacionStats:
+      type: object
+      description: Estadísticas por situación militar
+      properties:
+        situacion:
+          type: string
+          enum: ["Actividad", "Retiro"]
+          description: Situación militar
+          example: "Actividad"
+        total:
+          type: integer
+          description: Total de personal en esta situación
+          example: 950
+        porcentaje:
+          type: number
+          format: float
+          description: Porcentaje que representa esta situación
+          example: 76.0
+        total_paginas:
+          type: integer
+          description: Total de páginas en esta situación
+          example: 45000
+
+    UbicacionStats:
+      type: object
+      description: Estadísticas por ubicación
+      properties:
+        ubicacion:
+          type: string
+          description: Nombre de la ubicación
+          example: "Archivo Central"
+        total:
+          type: integer
+          description: Total de expedientes en esta ubicación
+          example: 320
+        porcentaje:
+          type: number
+          format: float
+          description: Porcentaje que representa esta ubicación
+          example: 25.6
+        total_paginas:
+          type: integer
+          description: Total de páginas en esta ubicación
+          example: 14500
+
+    EstadisticasTemporales:
+      type: object
+      description: Estadísticas temporales
+      properties:
+        registros_por_mes:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegistroMensual'
+          description: Registros por mes (últimos 12 meses)
+        registros_por_ano:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegistroAnual'
+          description: Registros por año
+        ultimos_30_dias:
+          type: integer
+          description: Registros creados en los últimos 30 días
+          example: 45
+        tendencia_mensual:
+          type: string
+          enum: ["creciente", "decreciente", "estable"]
+          description: Tendencia de registros mensuales
+          example: "creciente"
+
+    RegistroMensual:
+      type: object
+      description: Estadísticas mensuales
+      properties:
+        ano:
+          type: integer
+          description: Año
+          example: 2025
+        mes:
+          type: integer
+          description: Mes (1-12)
+          example: 11
+        mes_nombre:
+          type: string
+          description: Nombre del mes
+          example: "Noviembre"
+        total:
+          type: integer
+          description: Total de registros en este mes
+          example: 85
+        porcentaje:
+          type: number
+          format: float
+          description: Porcentaje que representa este mes
+          example: 8.5
+
+    RegistroAnual:
+      type: object
+      description: Estadísticas anuales
+      properties:
+        ano:
+          type: integer
+          description: Año
+          example: 2025
+        total:
+          type: integer
+          description: Total de registros en este año
+          example: 450
+        porcentaje:
+          type: number
+          format: float
+          description: Porcentaje que representa este año
+          example: 36.0

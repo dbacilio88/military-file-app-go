@@ -1,97 +1,101 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { getProfile } from '@/lib/api';
 
 interface User {
-  id: string;
-  email: string;
-  nombre: string;
-  apellido: string;
-  documento: string;
-  telefono: string;
-  profile_id?: string;
-  roles: string[];
-  activo: boolean;
+    id: string;
+    email: string;
+    nombre: string;
+    apellido: string;
+    documento: string;
+    profile_id?: string;
+    activo: boolean;
 }
 
 export function useAuth() {
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [profileName, setProfileName] = useState<string>('');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    const token = localStorage.getItem('access_token');
-    const userStr = localStorage.getItem('user');
-
-    if (token && userStr) {
-      try {
-        const userData = JSON.parse(userStr);
-        setUser(userData);
-        
-        // Fetch profile name if profile_id exists
-        if (userData.profile_id) {
-          try {
-            const response = await fetch(`http://localhost:8080/api/v1/profiles/${userData.profile_id}`, {
-              headers: {
-                'Authorization': `Bearer ${token}`
-              }
-            });
-            
-            if (response.ok) {
-              const data = await response.json();
-              if (data.success && data.data) {
-                setProfileName(data.data.name);
-                localStorage.setItem('profile_name', data.data.name);
-              }
+    const router = useRouter();
+    const isMounted = useRef(false);
+    
+    // Inicializar sincrónicamente desde sessionStorage
+    const [user, setUser] = useState<User | null>(() => {
+        if (typeof window !== 'undefined') {
+            const userStr = sessionStorage.getItem('user');
+            if (userStr) {
+                try {
+                    return JSON.parse(userStr);
+                } catch {
+                    return null;
+                }
             }
-          } catch (error) {
-            console.error('Error fetching profile:', error);
-            // Fallback to stored profile name
-            const storedProfileName = localStorage.getItem('profile_name');
-            if (storedProfileName) {
-              setProfileName(storedProfileName);
-            }
-          }
         }
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-        logout();
-      }
-    }
-    setLoading(false);
-  };
+        return null;
+    });
+    
+    const [profileName, setProfileName] = useState<string>(() => {
+        if (typeof window !== 'undefined') {
+            return sessionStorage.getItem('profile_name') || '';
+        }
+        return '';
+    });
+    
+    const [loading, setLoading] = useState(true);
 
-  const logout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('profile_name');
-    setUser(null);
-    setProfileName('');
-    router.push('/login');
-  };
+    useEffect(() => {
+        // Prevenir ejecución duplicada en React Strict Mode
+        if (isMounted.current) return;
+        isMounted.current = true;
 
-  const hasRole = (role: string) => {
-    return user?.roles?.includes(role) || false;
-  };
+        checkAuth();
+    }, []);
 
-  const hasAnyRole = (roles: string[]) => {
-    return roles.some(role => user?.roles?.includes(role)) || false;
-  };
+    const checkAuth = async () => {
+        const token = sessionStorage.getItem('access_token');
+        const userStr = sessionStorage.getItem('user');
+        const storedProfileName = sessionStorage.getItem('profile_name');
 
-  return {
-    user,
-    profileName,
-    loading,
-    isAuthenticated: !!user,
-    logout,
-    hasRole,
-    hasAnyRole,
-  };
+        if (token && userStr) {
+            try {
+                const userData = JSON.parse(userStr);
+                setUser(userData);
+
+                // Solo hacer fetch del perfil si existe profile_id Y no está cacheado
+                if (userData.profile_id && !storedProfileName) {
+                    try {
+                        const data = await getProfile(userData.profile_id);
+                        
+                        if (data.success && data.data) {
+                            setProfileName(data.data.name);
+                            sessionStorage.setItem('profile_name', data.data.name);
+                        }
+                    } catch (error) {
+                        console.error('Error fetching profile:', error);
+                    }
+                }
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+                logout();
+            }
+        }
+        setLoading(false);
+    };
+
+    const logout = () => {
+        sessionStorage.removeItem('access_token');
+        sessionStorage.removeItem('refresh_token');
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('profile_name');
+        setUser(null);
+        setProfileName('');
+        router.push('/login');
+    };
+
+    return {
+        user,
+        profileName,
+        loading,
+        isAuthenticated: !!user,
+        logout,
+    };
 }
