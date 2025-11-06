@@ -26,6 +26,17 @@ func NewProfileService(profileRepo *repository.ProfileRepository) *ProfileServic
 
 // CreateProfile creates a new profile with direct permissions
 func (s *ProfileService) CreateProfile(ctx context.Context, req *models.CreateProfileRequest, createdBy primitive.ObjectID) (*models.Profile, error) {
+	// Validate permissions
+	validPerms, invalidPerms := models.ValidatePermissions(req.Permissions)
+	if len(invalidPerms) > 0 {
+		var invalidPermsList []string
+		for _, perm := range invalidPerms {
+			invalidPermsList = append(invalidPermsList, string(perm))
+		}
+		return nil, fmt.Errorf("permisos inválidos encontrados: %v. Permisos válidos disponibles en /api/v1/permissions",
+			invalidPermsList)
+	}
+
 	// Check if profile name already exists
 	exists, err := s.profileRepo.ExistsByName(ctx, req.Name)
 	if err != nil {
@@ -48,7 +59,7 @@ func (s *ProfileService) CreateProfile(ctx context.Context, req *models.CreatePr
 		Name:        req.Name,
 		Slug:        req.Slug,
 		Description: req.Description,
-		Permissions: req.Permissions,
+		Permissions: validPerms, // Use only valid permissions
 		IsSystem:    false,
 		Active:      true,
 		CreatedBy:   createdBy,
@@ -184,6 +195,17 @@ func (s *ProfileService) DeleteProfile(ctx context.Context, id primitive.ObjectI
 
 // UpdateProfilePermissions updates only the permissions of a profile
 func (s *ProfileService) UpdateProfilePermissions(ctx context.Context, id primitive.ObjectID, permissions []models.Permission, updatedBy primitive.ObjectID) (*models.ProfileResponse, error) {
+	// Validate permissions
+	validPerms, invalidPerms := models.ValidatePermissions(permissions)
+	if len(invalidPerms) > 0 {
+		var invalidPermsList []string
+		for _, perm := range invalidPerms {
+			invalidPermsList = append(invalidPermsList, string(perm))
+		}
+		return nil, fmt.Errorf("permisos inválidos encontrados: %v. Consulte /api/v1/permissions para ver permisos válidos",
+			invalidPermsList)
+	}
+
 	// Get current profile to check if it exists
 	currentProfile, err := s.profileRepo.GetProfileByID(ctx, id)
 	if err != nil {
@@ -195,7 +217,7 @@ func (s *ProfileService) UpdateProfilePermissions(ctx context.Context, id primit
 	}
 
 	update := bson.M{
-		"permissions": permissions,
+		"permissions": validPerms, // Use only valid permissions
 	}
 
 	updatedProfile, err := s.profileRepo.UpdateProfile(ctx, id, update, updatedBy)

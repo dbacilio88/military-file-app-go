@@ -60,9 +60,40 @@ export interface User {
     apellido: string;
     documento: string;
     profile_id?: string;
+    profile?: Profile; // Información del perfil completo
     activo: boolean;
     created_at: string;
     updated_at: string;
+}
+
+// Usuario autenticado con permisos
+export interface AuthenticatedUser extends User {
+    permissions: string[]; // Permisos del usuario
+    token: string; // JWT token
+    isAdmin: boolean; // Si tiene permisos de administrador
+}
+
+// Auth types
+export interface LoginCredentials {
+    email: string;
+    password: string;
+}
+
+export interface LoginResponse {
+    user: User;
+    token: string;
+    permissions: string[];
+    profile?: Profile;
+}
+
+export interface AuthContextType {
+    user: AuthenticatedUser | null;
+    login: (credentials: LoginCredentials) => Promise<void>;
+    logout: () => void;
+    hasPermission: (permission: string) => boolean;
+    hasAnyPermission: (permissions: string[]) => boolean;
+    hasAllPermissions: (permissions: string[]) => boolean;
+    isLoading: boolean;
 }
 
 export interface CreateUserInput {
@@ -101,7 +132,7 @@ export interface UserSearchParams {
 export interface Permission {
     name: string;
     description: string;
-    category: 'users' | 'profiles' | 'expedientes' | 'system';
+    category: 'dashboard' | 'users' | 'profiles' | 'expedientes' | 'system';
 }
 
 export interface Profile {
@@ -142,30 +173,36 @@ export interface AvailablePermissions {
 
 // Permisos disponibles según documentación
 export const AVAILABLE_PERMISSIONS: Permission[] = [
+    // Dashboard
+    { name: 'dashboard:view', description: 'Ver dashboard principal', category: 'dashboard' },
+    { name: 'dashboard:stats', description: 'Ver estadísticas del dashboard', category: 'dashboard' },
+    { name: 'dashboard:export', description: 'Exportar datos del dashboard', category: 'dashboard' },
+
     // Users
     { name: 'user:read', description: 'Ver usuarios', category: 'users' },
     { name: 'user:create', description: 'Crear usuarios', category: 'users' },
     { name: 'user:update', description: 'Actualizar usuarios', category: 'users' },
     { name: 'user:delete', description: 'Eliminar usuarios', category: 'users' },
-    
+
     // Profiles
     { name: 'profile:read', description: 'Ver perfiles', category: 'profiles' },
     { name: 'profile:create', description: 'Crear perfiles', category: 'profiles' },
     { name: 'profile:update', description: 'Actualizar perfiles', category: 'profiles' },
     { name: 'profile:delete', description: 'Eliminar perfiles', category: 'profiles' },
-    
+
     // Expedientes
     { name: 'expediente:read', description: 'Ver expedientes', category: 'expedientes' },
     { name: 'expediente:create', description: 'Crear expedientes', category: 'expedientes' },
     { name: 'expediente:update', description: 'Actualizar expedientes', category: 'expedientes' },
     { name: 'expediente:delete', description: 'Eliminar expedientes', category: 'expedientes' },
-    
+
     // System
     { name: 'system:admin', description: 'Administrador del sistema', category: 'system' },
 ];
 
 // Permisos agrupados por categoría
 export const PERMISSIONS_BY_CATEGORY = {
+    dashboard: AVAILABLE_PERMISSIONS.filter(p => p.category === 'dashboard'),
     users: AVAILABLE_PERMISSIONS.filter(p => p.category === 'users'),
     profiles: AVAILABLE_PERMISSIONS.filter(p => p.category === 'profiles'),
     expedientes: AVAILABLE_PERMISSIONS.filter(p => p.category === 'expedientes'),

@@ -200,12 +200,6 @@ func main() {
 			docs.GET("/swagger.yaml", logEndpoint("📄 SWAGGER-YAML", "Descarga de especificación YAML"), docsHandler.GetSwaggerYAML)
 		}
 
-		// Dashboard routes (public for testing - will be moved to protected later)
-		dashboard := v1.Group("/dashboard")
-		{
-			dashboard.GET("/stats", logEndpoint("📊 DASHBOARD-STATS", "Estadísticas del dashboard (público para pruebas)"), expedienteHandler.GetDashboardStats)
-		}
-
 		// Protected routes
 		protected := v1.Group(PathHome)
 		protected.Use(middleware.AuthMiddleware())
@@ -259,6 +253,12 @@ func main() {
 				expedientes.DELETE(PathVariableId, logEndpoint("🗑️ EXPEDIENTE-DELETE", "Eliminación de expediente"), middleware.RequirePermission(models.PermissionExpedienteDelete), expedienteHandler.DeleteExpediente)
 			}
 
+			// Dashboard routes - Permission-based access control
+			dashboard := protected.Group("/dashboard")
+			{
+				dashboard.GET("/stats", logEndpoint("📊 DASHBOARD-STATS", "Estadísticas del dashboard"), middleware.RequirePermission(models.PermissionDashboardStats), expedienteHandler.GetDashboardStats)
+			}
+
 			// System admin only routes
 			admin := protected.Group("/admin")
 			admin.Use(middleware.RequirePermission(models.PermissionSystemAdmin))
@@ -282,11 +282,11 @@ func main() {
 	log.Printf("   - Health: /api/v1/health")
 	log.Printf("   - Authentication: /api/v1/auth/*")
 	log.Printf("   - Documentation: /api/v1/docs/*")
-	log.Printf("   - Dashboard (public): /api/v1/dashboard/stats")
 	log.Printf("   - Users: /api/v1/users/*")
 	log.Printf("   - Profiles: /api/v1/profiles/*")
 	log.Printf("   - Permissions: /api/v1/permissions")
 	log.Printf("   - Expedientes: /api/v1/expedientes/*")
+	log.Printf("   - Dashboard: /api/v1/dashboard/*")
 	log.Printf("   - Admin: /api/v1/admin/*")
 	log.Println("================================================")
 

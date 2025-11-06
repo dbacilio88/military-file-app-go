@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { User, UserSearchParams, Profile } from '@/lib/types'
 import { getUsers, createUser, updateUser, deleteUser, getProfiles } from '@/lib/api'
 import { UserFormData } from '@/lib/validations'
+import { useAuth } from '@/contexts/authContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -26,6 +27,7 @@ import { Pagination } from './pagination'
 import { DeleteDialog } from './dialog'
 
 export function UsersManagement() {
+    const { user: currentUser, hasPermission } = useAuth()
     const [users, setUsers] = useState<User[]>([])
     const [profiles, setProfiles] = useState<Profile[]>([])
     const [loading, setLoading] = useState(true)
@@ -41,6 +43,11 @@ export function UsersManagement() {
     const pageSize = 10
     const toast = useToast()
 
+    // Permisos
+    const canCreate = hasPermission('user:create') || currentUser?.isAdmin
+    const canUpdate = hasPermission('user:update') || currentUser?.isAdmin  
+    const canDelete = hasPermission('user:delete') || currentUser?.isAdmin
+
     // Stats
     const [stats, setStats] = useState({
         total: 0,
@@ -55,18 +62,10 @@ export function UsersManagement() {
 
     // Obtener el ID del usuario actual en sesión
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const userStr = sessionStorage.getItem('user')
-            if (userStr) {
-                try {
-                    const user = JSON.parse(userStr)
-                    setCurrentUserId(user.id)
-                } catch (error) {
-                    console.error('Error parsing user from sessionStorage:', error)
-                }
-            }
+        if (currentUser?.id) {
+            setCurrentUserId(currentUser.id)
         }
-    }, [])
+    }, [currentUser])
 
     const fetchUsers = useCallback(async (page: number = 1) => {
         setLoading(true)
@@ -387,13 +386,15 @@ export function UsersManagement() {
                             >
                                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                             </Button>
-                            <Button
-                                onClick={handleCreateUser}
-                                className="bg-indigo-600 hover:bg-indigo-700"
-                            >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Nuevo Usuario
-                            </Button>
+                            {canCreate && (
+                                <Button
+                                    onClick={handleCreateUser}
+                                    className="bg-indigo-600 hover:bg-indigo-700"
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Nuevo Usuario
+                                </Button>
+                            )}
                         </div>
                     </div>
 

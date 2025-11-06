@@ -38,6 +38,8 @@ export const userSchema = z.object({
         .max(20, 'El documento no puede exceder 20 caracteres'),
     profile_id: z.string()
         .min(1, 'Debe seleccionar un perfil'),
+    activo: z.boolean()
+        .default(true),
 });
 
 export type UserFormData = z.infer<typeof userSchema>;

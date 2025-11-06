@@ -1,43 +1,65 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/contexts/toastContext';
-import { login } from '@/lib/api';
+import { useAuth } from '@/contexts/authContext';
 
 export default function LoginPage() {
     const router = useRouter();
     const toast = useToast();
+    const { user, login, isLoading } = useAuth();
     const [email, setEmail] = useState('admin@sistema.mil');
     const [password, setPassword] = useState('admin123');
-    const [loading, setLoading] = useState(false);
+    const [loginLoading, setLoginLoading] = useState(false);
+
+    useEffect(() => {
+        if (user && !isLoading) {
+            // Usar replace en lugar de push para evitar bucles
+            window.location.href = '/';
+        }
+    }, [user, isLoading, router]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        setLoading(true);
+        setLoginLoading(true);
 
         try {
-            const data = await login(email, password);
-
-            if (data.success && data.data) {
-                // Guardar tokens en sessionStorage
-                sessionStorage.setItem('access_token', data.data.access_token);
-                sessionStorage.setItem('refresh_token', data.data.refresh_token);
-                sessionStorage.setItem('user', JSON.stringify(data.data.user));
-
-                toast.success('Sesión iniciada correctamente');
-
-                // Redirigir al dashboard
-                router.push('/');
-            } else {
-                toast.error('Error: No se recibieron los datos de autenticación');
-            }
+            await login({ email, password });
+            toast.success('Sesión iniciada correctamente');
+            window.location.href = '/';
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Error al iniciar sesión');
         } finally {
-            setLoading(false);
+            setLoginLoading(false);
         }
     };
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
+
+    if (user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <h2 className="text-xl font-semibold text-gray-900">Ya estás autenticado</h2>
+                    <p className="text-gray-600 mt-2">Redirigiendo al dashboard...</p>
+                    <button
+                        onClick={() => window.location.href = '/'}
+                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    >
+                        Ir al Dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -91,18 +113,11 @@ export default function LoginPage() {
                     <div>
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loginLoading || isLoading}
                             className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+                            {loginLoading ? 'Iniciando sesión...' : 'Iniciar sesión'}
                         </button>
-                    </div>
-
-                    <div className="text-center">
-                        <p className="text-xs text-gray-500 mt-4">
-                            Credenciales por defecto:<br />
-                            <span className="font-mono">admin@sistema.mil / admin123</span>
-                        </p>
                     </div>
                 </form>
             </div>

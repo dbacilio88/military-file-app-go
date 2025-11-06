@@ -31,7 +31,10 @@ type ProfileResponse struct {
 	Slug        string             `json:"slug"`
 	Description string             `json:"description"`
 	Permissions []Permission       `json:"permissions"` // Direct permissions of the profile
+	Active      bool               `json:"active"`      // Profile status
 	IsSystem    bool               `json:"is_system"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
 }
 
 // ToProfileResponse converts Profile to ProfileResponse
@@ -42,7 +45,10 @@ func (p *Profile) ToProfileResponse() ProfileResponse {
 		Slug:        p.Slug,
 		Description: p.Description,
 		Permissions: p.Permissions,
+		Active:      p.Active,
 		IsSystem:    p.IsSystem,
+		CreatedAt:   p.CreatedAt,
+		UpdatedAt:   p.UpdatedAt,
 	}
 }
 
@@ -97,5 +103,10 @@ func GetAllPermissions() []PermissionList {
 
 		// System permissions
 		{Name: string(PermissionSystemAdmin), Description: "Administrador del sistema", Category: "system"},
+
+		// Dashboard permissions
+		{Name: string(PermissionDashboardView), Description: "Ver dashboard", Category: "dashboard"},
+		{Name: string(PermissionDashboardStats), Description: "Ver estadísticas del dashboard", Category: "dashboard"},
+		{Name: string(PermissionDashboardExport), Description: "Exportar datos del dashboard", Category: "dashboard"},
 	}
 }

@@ -1,17 +1,16 @@
 'use client'
 
 import { Footer } from "@/components/layouts/footer"
-import { Header } from "@/components/layouts/header"
-import ProtectedRoute from "@/components/protectedRoute"
+import Header from "@/components/layouts/header"
+import { ProtectedRoute } from "@/components/PermissionGuard"
 import { UsersManagement } from "./management"
-
-
-
-//export const dynamic = 'force-dynamic'
 
 export default function UsersPage() {
     return (
-        <ProtectedRoute>
+        <ProtectedRoute 
+            permissions={['user:read']}
+            requireAll={false}
+        >
             <Header />
 
             <main className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-100">

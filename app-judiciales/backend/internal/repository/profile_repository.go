@@ -73,11 +73,31 @@ func (r *ProfileRepository) GetProfileBySlug(ctx context.Context, slug string) (
 	return &profile, nil
 }
 
-// GetAllProfiles retrieves all active profiles
+// GetAllProfiles retrieves all profiles (active and inactive) for administration
 func (r *ProfileRepository) GetAllProfiles(ctx context.Context) ([]*models.Profile, error) {
-	cursor, err := r.collection.Find(ctx, bson.M{"active": true})
+	cursor, err := r.collection.Find(ctx, bson.M{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get profiles: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var profiles []*models.Profile
+	for cursor.Next(ctx) {
+		var profile models.Profile
+		if err := cursor.Decode(&profile); err != nil {
+			return nil, fmt.Errorf("failed to decode profile: %w", err)
+		}
+		profiles = append(profiles, &profile)
+	}
+
+	return profiles, nil
+}
+
+// GetActiveProfiles retrieves only active profiles
+func (r *ProfileRepository) GetActiveProfiles(ctx context.Context) ([]*models.Profile, error) {
+	cursor, err := r.collection.Find(ctx, bson.M{"active": true})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get active profiles: %w", err)
 	}
 	defer cursor.Close(ctx)
 

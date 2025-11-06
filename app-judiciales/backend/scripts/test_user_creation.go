@@ -103,6 +103,11 @@ func createAdministratorProfile(ctx context.Context, profileRepo *repository.Pro
 			// ⚙️ Administración del sistema
 			models.PermissionSystemAdmin,
 			models.PermissionSystemRead,
+
+			// 📊 Permisos del dashboard
+			models.PermissionDashboardView,
+			models.PermissionDashboardStats,
+			models.PermissionDashboardExport,
 		},
 	}
 

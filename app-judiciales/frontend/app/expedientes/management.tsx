@@ -44,6 +44,32 @@ export function ExpedientesManagement() {
         fuera: 0
     })
 
+    // Función para obtener estadísticas completas
+    const fetchStats = useCallback(async () => {
+        try {
+            // Obtener todos los expedientes para calcular estadísticas reales
+            const statsParams: ExpedienteSearchParams = {
+                page: 1,
+                limit: 9999, // Límite alto para obtener todos
+            }
+            
+            const response = await getExpedientes(statsParams.page, statsParams.limit)
+            
+            if (response.success && response.data?.data) {
+                const allExpedientes = response.data.data
+                setStats({
+                    total: response.data.pagination?.total || allExpedientes.length,
+                    dentro: allExpedientes.filter((e: Expediente) => e.estado === 'dentro').length,
+                    fuera: allExpedientes.filter((e: Expediente) => e.estado === 'fuera').length
+                })
+            }
+        } catch (error) {
+            console.error('Error fetching stats:', error)
+            // Mantener stats en 0 si hay error
+            setStats({ total: 0, dentro: 0, fuera: 0 })
+        }
+    }, [])
+
     const fetchExpedientes = useCallback(async (page: number = 1, filters: { grado?: Grado, situacion?: SituacionMilitar, estado?: ExpedienteEstado } = {}) => {
         setLoading(true)
         try {
@@ -90,12 +116,10 @@ export function ExpedientesManagement() {
                 setTotalExpedientes(responseData.total || expedientesArray.length)
                 setCurrentPage(responseData.page || page)
 
-                // Calculate stats
-                setStats({
-                    total: expedientesArray.length,
-                    dentro: expedientesArray.filter((e: Expediente) => e.estado === 'dentro').length,
-                    fuera: expedientesArray.filter((e: Expediente) => e.estado === 'fuera').length
-                })
+                // Solo actualizar estadísticas en la primera carga
+                if (page === 1) {
+                    fetchStats()
+                }
             } else {
                 console.warn('API response structure unexpected:', response)
                 setExpedientes([])
@@ -220,6 +244,8 @@ export function ExpedientesManagement() {
                 situacion: situacionFilter || undefined,
                 estado: estadoFilter || undefined
             })
+            // Actualizar estadísticas después de crear/actualizar
+            fetchStats()
         } catch (error: any) {
             console.error('Error saving expediente:', error)
             toast.error(error.message || 'Error al guardar el expediente')
@@ -242,6 +268,8 @@ export function ExpedientesManagement() {
                 situacion: situacionFilter || undefined,
                 estado: estadoFilter || undefined
             })
+            // Actualizar estadísticas después de eliminar
+            fetchStats()
         } catch (error: any) {
             console.error('Error deleting expediente:', error)
             toast.error(error.message || 'Error al eliminar el expediente')
@@ -289,6 +317,8 @@ export function ExpedientesManagement() {
                 situacion: situacionFilter || undefined,
                 estado: estadoFilter || undefined
             })
+            // Actualizar estadísticas después de eliminar múltiples
+            fetchStats()
         } catch (error: any) {
             console.error('Error deleting expedientes:', error)
             toast.error(error.message || 'Error al eliminar los expedientes')

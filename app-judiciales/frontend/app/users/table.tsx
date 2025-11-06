@@ -3,6 +3,7 @@
 import { User, Profile } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Edit, Trash2, Shield, Users as UsersIcon } from 'lucide-react'
+import { useAuth } from '@/contexts/authContext'
 
 interface UsersTableProps {
     users: User[]
@@ -27,6 +28,11 @@ export function UsersTable({
     onDelete,
     searchQuery = ''
 }: UsersTableProps) {
+    const { hasPermission, user: currentUser } = useAuth()
+    
+    // Permisos para acciones
+    const canEdit = hasPermission('user:update') || currentUser?.isAdmin
+    const canDelete = hasPermission('user:delete') || currentUser?.isAdmin
     if (users.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-12 border border-gray-200 rounded-lg bg-white">
@@ -143,28 +149,38 @@ export function UsersTable({
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex justify-end gap-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => onEdit(user)}
-                                            className="text-indigo-600 hover:text-indigo-900"
-                                        >
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => onDelete(user)}
-                                            disabled={isCurrentUser}
-                                            className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            title={
-                                                isCurrentUser
-                                                    ? 'No puedes eliminar tu propio usuario'
-                                                    : ''
-                                            }
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        {canEdit && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => onEdit(user)}
+                                                className="text-indigo-600 hover:text-indigo-900"
+                                                title="Editar usuario"
+                                            >
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                        {canDelete && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => onDelete(user)}
+                                                disabled={isCurrentUser}
+                                                className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title={
+                                                    isCurrentUser
+                                                        ? 'No puedes eliminar tu propio usuario'
+                                                        : 'Eliminar usuario'
+                                                }
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                        {!canEdit && !canDelete && (
+                                            <span className="text-sm text-gray-400 italic">
+                                                Solo lectura
+                                            </span>
+                                        )}
                                     </div>
                                 </td>
                             </tr>

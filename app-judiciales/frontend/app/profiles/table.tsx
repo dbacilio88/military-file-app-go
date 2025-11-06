@@ -2,20 +2,44 @@
 
 import { Profile } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { Pencil, Trash2, Shield, CheckCircle2, XCircle } from 'lucide-react'
+import { Pencil, Trash2, Shield, Edit } from 'lucide-react'
+import { useAuth } from '@/contexts/authContext'
 
 interface ProfilesTableProps {
     profiles: Profile[]
+    selectedProfiles: string[]
+    onSelectProfile: (id: string) => void
+    onToggleSelectAll: () => void
     onEdit: (profile: Profile) => void
     onDelete: (profile: Profile) => void
 }
 
-export function ProfilesTable({ profiles, onEdit, onDelete }: ProfilesTableProps) {
+export function ProfilesTable({ 
+    profiles, 
+    selectedProfiles, 
+    onSelectProfile, 
+    onToggleSelectAll, 
+    onEdit, 
+    onDelete 
+}: ProfilesTableProps) {
+    const { hasPermission, user } = useAuth()
+    
+    // Permisos para acciones
+    const canEdit = hasPermission('profile:update') || user?.isAdmin
+    const canDelete = hasPermission('profile:delete') || user?.isAdmin
     return (
         <div className="overflow-x-auto border border-gray-200 rounded-lg">
             <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                     <tr>
+                        <th className="px-6 py-3 text-left">
+                            <input
+                                type="checkbox"
+                                checked={selectedProfiles.length === profiles.length && profiles.length > 0}
+                                onChange={onToggleSelectAll}
+                                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                        </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Nombre
                         </th>
@@ -39,13 +63,27 @@ export function ProfilesTable({ profiles, onEdit, onDelete }: ProfilesTableProps
                 <tbody className="bg-white divide-y divide-gray-200">
                     {profiles.length === 0 ? (
                         <tr>
-                            <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                            <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                                 No hay perfiles registrados
                             </td>
                         </tr>
                     ) : (
                         profiles.map((profile) => (
                             <tr key={profile.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedProfiles.includes(profile.id)}
+                                        onChange={() => onSelectProfile(profile.id)}
+                                        disabled={profile.is_system}
+                                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title={
+                                            profile.is_system
+                                                ? 'No se puede seleccionar perfil del sistema'
+                                                : ''
+                                        }
+                                    />
+                                </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex items-center">
                                         <div className="text-sm font-medium text-gray-900">
@@ -74,38 +112,52 @@ export function ProfilesTable({ profiles, onEdit, onDelete }: ProfilesTableProps
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    {/* Si no existe la propiedad active, asumimos que es activo para perfiles del sistema */}
-                                    {(profile.active !== undefined ? profile.active : profile.is_system) ? (
-                                        <div className="flex items-center text-green-600">
-                                            <CheckCircle2 className="h-4 w-4 mr-1" />
-                                            <span className="text-sm font-medium">Activo</span>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center text-gray-400">
-                                            <XCircle className="h-4 w-4 mr-1" />
-                                            <span className="text-sm font-medium">Inactivo</span>
-                                        </div>
-                                    )}
+                                    {/* Usar el mismo formato que la tabla de usuarios */}
+                                    <span
+                                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                            (profile.active !== undefined ? profile.active : true)
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-red-100 text-red-800'
+                                        }`}
+                                    >
+                                        <span
+                                            className={`h-2 w-2 rounded-full mr-1.5 ${
+                                                (profile.active !== undefined ? profile.active : true) ? 'bg-green-500' : 'bg-red-500'
+                                            }`}
+                                        />
+                                        {(profile.active !== undefined ? profile.active : true) ? 'Activo' : 'Inactivo'}
+                                    </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex justify-end gap-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => onEdit(profile)}
-                                            className="text-indigo-600 hover:text-indigo-900"
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => onDelete(profile)}
-                                            className="text-red-600 hover:text-red-900"
-                                            disabled={profile.is_system}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        {canEdit && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => onEdit(profile)}
+                                                className="text-indigo-600 hover:text-indigo-900"
+                                                title="Editar perfil"
+                                            >
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                        {canDelete && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => onDelete(profile)}
+                                                disabled={profile.is_system}
+                                                className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title={profile.is_system ? 'No se puede eliminar perfil del sistema' : 'Eliminar perfil'}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                        {!canEdit && !canDelete && (
+                                            <span className="text-sm text-gray-400 italic">
+                                                Solo lectura
+                                            </span>
+                                        )}
                                     </div>
                                 </td>
                             </tr>

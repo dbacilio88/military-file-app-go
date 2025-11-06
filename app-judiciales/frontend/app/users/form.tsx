@@ -27,7 +27,8 @@ export function UserForm({
         nombre: user?.nombre || '',
         apellido: user?.apellido || '',
         documento: user?.documento || '',
-        profile_id: user?.profile_id || ''
+        profile_id: user?.profile_id || '',
+        activo: user?.activo ?? true
     })
     const [errors, setErrors] = useState<Record<string, string>>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -42,12 +43,13 @@ export function UserForm({
                 nombre: user.nombre,
                 apellido: user.apellido,
                 documento: user.documento,
-                profile_id: user.profile_id || ''
+                profile_id: user.profile_id || '',
+                activo: user.activo
             })
         }
     }, [user])
 
-    const handleChange = (field: string, value: string) => {
+    const handleChange = (field: string, value: string | boolean) => {
         setFormData(prev => ({ ...prev, [field]: value }))
         if (errors[field]) {
             setErrors(prev => {
@@ -229,6 +231,32 @@ export function UserForm({
                     {errors.profile_id && (
                         <p className="mt-1 text-sm text-red-600">{errors.profile_id}</p>
                     )}
+                </div>
+
+                {/* Estado Activo */}
+                <div>
+                    <label htmlFor="activo" className="block text-sm font-medium text-gray-700 mb-1">
+                        Estado
+                    </label>
+                    <div className="flex items-center">
+                        <input
+                            id="activo"
+                            type="checkbox"
+                            checked={formData.activo}
+                            onChange={(e) => handleChange('activo', e.target.checked)}
+                            disabled={isSubmitting}
+                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="activo" className="ml-2 text-sm text-gray-900">
+                            {formData.activo ? 'Usuario activo' : 'Usuario inactivo'}
+                        </label>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                        {formData.activo 
+                            ? 'El usuario puede iniciar sesión y acceder al sistema'
+                            : 'El usuario no puede iniciar sesión'
+                        }
+                    </p>
                 </div>
             </div>
 

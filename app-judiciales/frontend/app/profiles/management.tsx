@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Plus, Shield, Loader2, Search, X as XIcon, Filter, RefreshCw } from 'lucide-react'
+import { Plus, Shield, Loader2, Search, X as XIcon, Filter, RefreshCw, Trash2 } from 'lucide-react'
 import { useToast } from '@/contexts/toastContext'
 import { ProfilesTable } from './table'
 import { ProfileForm } from './form'
@@ -22,6 +22,7 @@ export function ProfilesManagement() {
     const [profiles, setProfiles] = useState<Profile[]>([])
     const [loading, setLoading] = useState(true)
     const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null)
+    const [selectedProfiles, setSelectedProfiles] = useState<string[]>([])
     const [profileToDelete, setProfileToDelete] = useState<Profile | null>(null)
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -97,6 +98,42 @@ export function ProfilesManagement() {
     const clearSearch = () => {
         setSearchQuery('')
         setSearchValue('')
+    }
+
+    // Funciones para selección múltiple
+    const handleSelectProfile = (id: string) => {
+        const profile = profiles.find(p => p.id === id)
+        if (profile?.is_system) {
+            toast.error('No se puede seleccionar perfiles del sistema')
+            return
+        }
+        setSelectedProfiles(prev =>
+            prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
+        )
+    }
+
+    const toggleSelectAll = () => {
+        if (selectedProfiles.length === profiles.filter(p => !p.is_system).length && profiles.filter(p => !p.is_system).length > 0) {
+            setSelectedProfiles([])
+        } else {
+            // Solo seleccionar perfiles que no son del sistema
+            setSelectedProfiles(profiles.filter(p => !p.is_system).map(p => p.id))
+        }
+    }
+
+    const handleDeleteClick = (profile?: Profile) => {
+        if (profile) {
+            // Verificar si es un perfil del sistema
+            if (profile.is_system) {
+                toast.error('No se puede eliminar un perfil del sistema')
+                return
+            }
+            setProfileToDelete(profile)
+            setIsDeleteDialogOpen(true)
+        } else if (selectedProfiles.length > 0) {
+            setProfileToDelete(null)
+            setIsDeleteDialogOpen(true)
+        }
     }
 
     const handleCreateProfile = () => {
@@ -274,6 +311,16 @@ export function ProfilesManagement() {
                                 >
                                     <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                                 </Button>
+                                {selectedProfiles.length > 0 && (
+                                    <Button
+                                        variant="destructive"
+                                        onClick={() => handleDeleteClick()}
+                                        className="bg-red-600 hover:bg-red-700"
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Eliminar ({selectedProfiles.length})
+                                    </Button>
+                                )}
                                 <Button
                                     onClick={handleCreateProfile}
                                     className="bg-indigo-600 hover:bg-indigo-700"
@@ -362,6 +409,9 @@ export function ProfilesManagement() {
                             ) : (
                                 <ProfilesTable
                                     profiles={filteredProfiles}
+                                    selectedProfiles={selectedProfiles}
+                                    onSelectProfile={handleSelectProfile}
+                                    onToggleSelectAll={toggleSelectAll}
                                     onEdit={handleEditProfile}
                                     onDelete={handleDeleteProfile}
                                 />

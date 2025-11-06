@@ -16,6 +16,13 @@ export default function PermissionsSelector({
 }: PermissionsSelectorProps) {
   // Definir colores por categoría
   const categoryColors = {
+    dashboard: {
+      border: 'border-indigo-200',
+      bg: 'bg-indigo-50',
+      checkbox: 'text-indigo-600 focus:ring-indigo-500',
+      header: 'text-indigo-900',
+      tag: 'bg-indigo-100 text-indigo-800'
+    },
     users: {
       border: 'border-blue-200',
       bg: 'bg-blue-50',
@@ -123,7 +130,8 @@ export default function PermissionsSelector({
                   htmlFor={`category-${category}`}
                   className={`text-sm font-medium capitalize cursor-pointer ${colors.header}`}
                 >
-                  {category === 'expedientes' ? 'Expedientes' : 
+                  {category === 'dashboard' ? 'Dashboard' :
+                   category === 'expedientes' ? 'Expedientes' : 
                    category === 'users' ? 'Usuarios' :
                    category === 'profiles' ? 'Perfiles' :
                    category === 'system' ? 'Sistema' : category}

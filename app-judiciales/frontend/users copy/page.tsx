@@ -1,7 +1,7 @@
 'use client'
 
 import { Footer } from "@/components/layouts/footer"
-import { Header } from "@/components/layouts/header"
+import Header from "@/components/layouts/header"
 import ProtectedRoute from "@/components/protectedRoute"
 import { UsersManagement } from "./management"
 

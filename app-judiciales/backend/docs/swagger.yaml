@@ -806,44 +806,6 @@ paths:
     get:
       tags:
         - Dashboard
-      summary: Obtener estadísticas del dashboard (público para pruebas)
-      description: |
-        Obtiene estadísticas comprehensivas para el dashboard, incluyendo:
-        - Resumen general (totales, porcentajes)
-        - Estadísticas por grado militar
-        - Estadísticas por estado (dentro/fuera)
-        - Estadísticas por situación militar (actividad/retiro)
-        - Estadísticas por ubicación (top 10)
-        - Estadísticas temporales (por mes/año)
-        
-        **Nota:** Este endpoint está temporalmente disponible sin autenticación para pruebas.
-      responses:
-        '200':
-          description: Estadísticas del dashboard obtenidas exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  message:
-                    type: string
-                    example: "Dashboard statistics retrieved successfully"
-                  data:
-                    $ref: '#/components/schemas/DashboardStats'
-        '500':
-          description: Error interno del servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /expedientes/dashboard/stats:
-    get:
-      tags:
-        - Dashboard
         - Expedientes
       summary: Obtener estadísticas completas del dashboard
       description: |
@@ -854,6 +816,9 @@ paths:
         - Estadísticas por situación militar (actividad/retiro)
         - Estadísticas por ubicación (top 10)
         - Estadísticas temporales (por mes/año)
+        
+        **Permisos requeridos:**
+        - `dashboard:stats` - Para ver estadísticas del dashboard
       security:
         - BearerAuth: []
       responses:
@@ -880,74 +845,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Sin permisos suficientes
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /dashboard/stats:
-    get:
-      tags:
-        - Dashboard
-      summary: Obtener estadísticas completas del dashboard
-      description: |
-        **Endpoint principal del dashboard** - Obtiene estadísticas comprehensivas organizadas por categorías:
-        
-        ### 📊 **Resumen General**
-        - Total de expedientes registrados
-        - Distribución por estado (dentro/fuera)
-        - Distribución por situación militar (actividad/retiro)
-        - Promedio de páginas por expediente
-        - Total de páginas y ubicaciones únicas
-        
-        ### 🎖️ **Estadísticas por Grado Militar**
-        - Distribución por cada uno de los 11 grados militares
-        - Cantidad por estado y situación militar para cada grado
-        - Porcentajes relativos y total de páginas
-        
-        ### 📍 **Estadísticas por Ubicación**
-        - Top 10 ubicaciones con mayor cantidad de expedientes
-        - Distribución porcentual por ubicación
-        
-        ### 📅 **Estadísticas Temporales**
-        - Registros por mes (últimos 12 meses)
-        - Registros por año
-        - Tendencia mensual (creciente/decreciente/estable)
-        - Registros de los últimos 30 días
-        
-        **Permisos requeridos:** PermissionExpedienteRead
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Estadísticas del dashboard obtenidas exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  message:
-                    type: string
-                    example: "Dashboard statistics retrieved successfully"
-                  data:
-                    $ref: '#/components/schemas/DashboardStats'
-        '401':
-          description: No autorizado - Token no válido o faltante
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Acceso denegado - Sin permisos de lectura de expedientes
           content:
             application/json:
               schema:

@@ -29,6 +29,11 @@ const (
 	// System permissions
 	PermissionSystemAdmin Permission = "system:admin"
 	PermissionSystemRead  Permission = "system:read"
+
+	// Dashboard permissions
+	PermissionDashboardView   Permission = "dashboard:view"
+	PermissionDashboardStats  Permission = "dashboard:stats"
+	PermissionDashboardExport Permission = "dashboard:export"
 )
 
 // RolePermissions maps roles to their permissions
@@ -43,6 +48,9 @@ var RolePermissions = map[string][]Permission{
 		PermissionExpedienteManage,
 		PermissionSystemAdmin,
 		PermissionSystemRead,
+		PermissionDashboardView,
+		PermissionDashboardStats,
+		PermissionDashboardExport,
 	},
 	"juez": {
 		PermissionUserRead,
@@ -50,6 +58,8 @@ var RolePermissions = map[string][]Permission{
 		PermissionExpedienteRead,
 		PermissionExpedienteUpdate,
 		PermissionSystemRead,
+		PermissionDashboardView,
+		PermissionDashboardStats,
 	},
 	"secretario": {
 		PermissionUserRead,
@@ -58,11 +68,14 @@ var RolePermissions = map[string][]Permission{
 		PermissionExpedienteRead,
 		PermissionExpedienteUpdate,
 		PermissionSystemRead,
+		PermissionDashboardView,
+		PermissionDashboardStats,
 	},
 	"abogado": {
 		PermissionProfileRead,
 		PermissionExpedienteRead,
 		PermissionSystemRead,
+		PermissionDashboardView,
 	},
 }
 
@@ -171,4 +184,72 @@ func ValidRoles() []string {
 func IsValidRole(role string) bool {
 	_, exists := RolePermissions[role]
 	return exists
+}
+
+// ValidPermissions returns all valid permissions
+func ValidPermissions() []Permission {
+	return []Permission{
+		// User permissions
+		PermissionUserCreate,
+		PermissionUserRead,
+		PermissionUserUpdate,
+		PermissionUserDelete,
+		PermissionUserManage,
+
+		// Profile permissions
+		PermissionProfileRead,
+		PermissionProfileCreate,
+		PermissionProfileUpdate,
+		PermissionProfileDelete,
+		PermissionProfileWrite,
+
+		// Expediente permissions
+		PermissionExpedienteCreate,
+		PermissionExpedienteRead,
+		PermissionExpedienteUpdate,
+		PermissionExpedienteDelete,
+		PermissionExpedienteManage,
+
+		// System permissions
+		PermissionSystemAdmin,
+		PermissionSystemRead,
+
+		// Dashboard permissions
+		PermissionDashboardView,
+		PermissionDashboardStats,
+		PermissionDashboardExport,
+	}
+}
+
+// IsValidPermission checks if a permission is valid
+func IsValidPermission(permission Permission) bool {
+	validPerms := ValidPermissions()
+	for _, validPerm := range validPerms {
+		if permission == validPerm {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidatePermissions validates a list of permissions
+func ValidatePermissions(permissions []Permission) ([]Permission, []Permission) {
+	var valid []Permission
+	var invalid []Permission
+
+	for _, perm := range permissions {
+		if IsValidPermission(perm) {
+			valid = append(valid, perm)
+		} else {
+			invalid = append(invalid, perm)
+		}
+	}
+
+	return valid, invalid
+}
+
+// FilterValidPermissions returns only valid permissions from a list
+func FilterValidPermissions(permissions []Permission) []Permission {
+	valid, _ := ValidatePermissions(permissions)
+	return valid
 }
