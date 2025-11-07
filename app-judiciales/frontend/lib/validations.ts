@@ -90,6 +90,10 @@ export const expedienteSchema = z.object({
     orden: z.number()
         .int('El orden debe ser un entero')
         .min(1, 'El orden debe ser al menos 1'),
+    ano: z.number()
+        .int('El año debe ser un entero')
+        .min(1900, 'El año debe ser mayor a 1900')
+        .max(2100, 'El año debe ser menor a 2100'),
     estado: z.enum(['dentro', 'fuera'])
         .optional(),
 });

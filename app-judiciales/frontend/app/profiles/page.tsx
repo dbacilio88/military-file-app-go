@@ -2,7 +2,7 @@
 
 import { Footer } from "@/components/layouts/footer"
 import Header from "@/components/layouts/header"
-import ProtectedRoute from "@/components/protectedRoute"
+import ProtectedRoute from "@/components/ProtectedRoute"
 import ProtectedPage from "@/components/ProtectedPage"
 import { ProfilesManagement } from "./management"
 

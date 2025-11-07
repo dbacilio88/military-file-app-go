@@ -831,6 +831,7 @@ func (h *ExpedienteHandler) CreateExpediente(c *gin.Context) {
 		CIP:              req.CIP,
 		Ubicacion:        req.Ubicacion,
 		Orden:            req.Orden,
+		Ano:              req.Ano,
 		CreatedBy:        userObjID,
 		UpdatedBy:        userObjID,
 	}
@@ -935,6 +936,9 @@ func (h *ExpedienteHandler) buildUpdateMap(req *models.UpdateExpedienteRequest, 
 	}
 	if req.Orden != nil {
 		updates["orden"] = *req.Orden
+	}
+	if req.Ano != nil {
+		updates["ano"] = *req.Ano
 	}
 
 	updates["updatedBy"] = userObjID

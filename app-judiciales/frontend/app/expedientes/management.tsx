@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Expediente, CreateExpedienteInput, UpdateExpedienteInput, ExpedienteSearchParams, Grado, SituacionMilitar, ExpedienteEstado, GradoLabels, SituacionMilitarLabels, EstadoExpedienteLabels } from '@/lib/types'
-import { getExpedientes, createExpediente, updateExpediente, deleteExpediente } from '@/lib/api'
-import { useToast } from '@/contexts/toastContext'
+import { getExpedientes, searchExpedientes, createExpediente, updateExpediente, deleteExpediente } from '@/lib/api'
+import { useToast } from '@/contexts/ToastContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -35,6 +35,8 @@ export function ExpedientesManagement() {
     const [gradoFilter, setGradoFilter] = useState<Grado | ''>('')
     const [situacionFilter, setSituacionFilter] = useState<SituacionMilitar | ''>('')
     const [estadoFilter, setEstadoFilter] = useState<ExpedienteEstado | ''>('')
+    const [fechaInicioFilter, setFechaInicioFilter] = useState('')
+    const [fechaFinFilter, setFechaFinFilter] = useState('')
     const [showFilters, setShowFilters] = useState(false)
 
     // Stats
@@ -70,18 +72,34 @@ export function ExpedientesManagement() {
         }
     }, [])
 
-    const fetchExpedientes = useCallback(async (page: number = 1, filters: { grado?: Grado, situacion?: SituacionMilitar, estado?: ExpedienteEstado } = {}) => {
+    const fetchExpedientes = useCallback(async (page: number = 1, filters: { 
+        grado?: Grado, 
+        situacion?: SituacionMilitar, 
+        estado?: ExpedienteEstado,
+        fecha_inicio?: string,
+        fecha_fin?: string
+    } = {}) => {
         setLoading(true)
         try {
-            const params: ExpedienteSearchParams = {
-                page,
-                limit: pageSize,
-                ...(filters.grado && { grado: filters.grado }),
-                ...(filters.situacion && { situacion_militar: filters.situacion }),
-                ...(filters.estado && { estado: filters.estado })
-            }
+            const hasFilters = filters.grado || filters.situacion || filters.estado || filters.fecha_inicio || filters.fecha_fin;
+            let response;
 
-            const response = await getExpedientes(params.page, params.limit)
+            if (hasFilters) {
+                // Usar searchExpedientes cuando hay filtros
+                const params: ExpedienteSearchParams = {
+                    page,
+                    limit: pageSize,
+                    ...(filters.grado && { grado: filters.grado }),
+                    ...(filters.situacion && { situacion_militar: filters.situacion }),
+                    ...(filters.estado && { estado: filters.estado }),
+                    ...(filters.fecha_inicio && { fecha_inicio: filters.fecha_inicio }),
+                    ...(filters.fecha_fin && { fecha_fin: filters.fecha_fin })
+                };
+                response = await searchExpedientes(params);
+            } else {
+                // Usar getExpedientes básico cuando no hay filtros
+                response = await getExpedientes(page, pageSize);
+            }
 
             console.log('Expedientes API Response:', response)
             console.log('Response.data:', response.data)
@@ -151,6 +169,8 @@ export function ExpedientesManagement() {
         setGradoFilter('')
         setSituacionFilter('')
         setEstadoFilter('')
+        setFechaInicioFilter('')
+        setFechaFinFilter('')
         fetchExpedientes(1, {})
     }
 
@@ -172,7 +192,9 @@ export function ExpedientesManagement() {
             fetchExpedientes(currentPage, {
                 grado: gradoFilter || undefined,
                 situacion: situacionFilter || undefined,
-                estado: estadoFilter || undefined
+                estado: estadoFilter || undefined,
+                fecha_inicio: fechaInicioFilter || undefined,
+                fecha_fin: fechaFinFilter || undefined
             })
         }
     }
@@ -182,7 +204,9 @@ export function ExpedientesManagement() {
             fetchExpedientes(page, {
                 grado: gradoFilter || undefined,
                 situacion: situacionFilter || undefined,
-                estado: estadoFilter || undefined
+                estado: estadoFilter || undefined,
+                fecha_inicio: fechaInicioFilter || undefined,
+                fecha_fin: fechaFinFilter || undefined
             })
         }
     }
@@ -191,7 +215,9 @@ export function ExpedientesManagement() {
         fetchExpedientes(1, {
             grado: gradoFilter || undefined,
             situacion: situacionFilter || undefined,
-            estado: estadoFilter || undefined
+            estado: estadoFilter || undefined,
+            fecha_inicio: fechaInicioFilter || undefined,
+            fecha_fin: fechaFinFilter || undefined
         })
     }
 
@@ -458,78 +484,121 @@ export function ExpedientesManagement() {
 
                     {/* Filters */}
                     {showFilters && (
-                        <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Grado
-                                </label>
-                                <select
-                                    value={gradoFilter}
-                                    onChange={(e) => {
-                                        setGradoFilter(e.target.value as Grado | '')
-                                        handleFilterChange()
-                                    }}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                >
-                                    <option value="">Todos</option>
-                                    {gradoOptions.map(grado => (
-                                        <option key={grado} value={grado}>
-                                            {GradoLabels[grado]}
-                                        </option>
-                                    ))}
-                                </select>
+                        <div className="mt-4 space-y-4 p-4 bg-gray-50 rounded-lg">
+                            {/* Primera fila de filtros */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Grado
+                                    </label>
+                                    <select
+                                        value={gradoFilter}
+                                        onChange={(e) => {
+                                            setGradoFilter(e.target.value as Grado | '')
+                                            handleFilterChange()
+                                        }}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    >
+                                        <option value="">Todos</option>
+                                        {gradoOptions.map(grado => (
+                                            <option key={grado} value={grado}>
+                                                {GradoLabels[grado]}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Situación Militar
+                                    </label>
+                                    <select
+                                        value={situacionFilter}
+                                        onChange={(e) => {
+                                            setSituacionFilter(e.target.value as SituacionMilitar | '')
+                                            handleFilterChange()
+                                        }}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    >
+                                        <option value="">Todas</option>
+                                        {situacionOptions.map(situacion => (
+                                            <option key={situacion} value={situacion}>
+                                                {SituacionMilitarLabels[situacion]}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Estado
+                                    </label>
+                                    <select
+                                        value={estadoFilter}
+                                        onChange={(e) => {
+                                            setEstadoFilter(e.target.value as ExpedienteEstado | '')
+                                            handleFilterChange()
+                                        }}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    >
+                                        <option value="">Todos</option>
+                                        {estadoOptions.map(estado => (
+                                            <option key={estado} value={estado}>
+                                                {EstadoExpedienteLabels[estado]}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="flex items-end">
+                                    <Button
+                                        variant="outline"
+                                        onClick={clearSearch}
+                                        className="w-full"
+                                    >
+                                        Limpiar Filtros
+                                    </Button>
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Situación Militar
-                                </label>
-                                <select
-                                    value={situacionFilter}
-                                    onChange={(e) => {
-                                        setSituacionFilter(e.target.value as SituacionMilitar | '')
-                                        handleFilterChange()
-                                    }}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                >
-                                    <option value="">Todas</option>
-                                    {situacionOptions.map(situacion => (
-                                        <option key={situacion} value={situacion}>
-                                            {SituacionMilitarLabels[situacion]}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            {/* Segunda fila - Filtros de fecha */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Fecha Inicio
+                                    </label>
+                                    <Input
+                                        type="date"
+                                        value={fechaInicioFilter}
+                                        onChange={(e) => {
+                                            setFechaInicioFilter(e.target.value)
+                                            // Validación: si hay fecha fin, asegurar que inicio <= fin
+                                            if (fechaFinFilter && e.target.value > fechaFinFilter) {
+                                                setFechaFinFilter('')
+                                            }
+                                            handleFilterChange()
+                                        }}
+                                        className="w-full"
+                                        placeholder="Seleccionar fecha de inicio"
+                                    />
+                                </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Estado
-                                </label>
-                                <select
-                                    value={estadoFilter}
-                                    onChange={(e) => {
-                                        setEstadoFilter(e.target.value as ExpedienteEstado | '')
-                                        handleFilterChange()
-                                    }}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                >
-                                    <option value="">Todos</option>
-                                    {estadoOptions.map(estado => (
-                                        <option key={estado} value={estado}>
-                                            {EstadoExpedienteLabels[estado]}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="flex items-end">
-                                <Button
-                                    variant="outline"
-                                    onClick={clearSearch}
-                                    className="w-full"
-                                >
-                                    Limpiar Filtros
-                                </Button>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Fecha Fin
+                                    </label>
+                                    <Input
+                                        type="date"
+                                        value={fechaFinFilter}
+                                        onChange={(e) => {
+                                            setFechaFinFilter(e.target.value)
+                                            handleFilterChange()
+                                        }}
+                                        min={fechaInicioFilter || undefined}
+                                        className="w-full"
+                                        placeholder="Seleccionar fecha de fin"
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}

@@ -57,6 +57,9 @@ export function ExpedientesTable({
                             Orden
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Año
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Grado
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -77,6 +80,9 @@ export function ExpedientesTable({
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Estado
                         </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Fecha Registro
+                        </th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Acciones
                         </th>
@@ -85,7 +91,7 @@ export function ExpedientesTable({
                 <tbody className="bg-white divide-y divide-gray-200">
                     {expedientes.length === 0 ? (
                         <tr>
-                            <td colSpan={10} className="px-6 py-8 text-center text-gray-500">
+                            <td colSpan={12} className="px-6 py-8 text-center text-gray-500">
                                 No hay expedientes registrados
                             </td>
                         </tr>
@@ -103,6 +109,11 @@ export function ExpedientesTable({
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <span className="text-sm font-medium text-gray-900">
                                         #{expediente.orden}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className="text-sm text-gray-900">
+                                        {expediente.ano}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -151,6 +162,21 @@ export function ExpedientesTable({
                                             <span className="text-sm font-medium">{EstadoExpedienteLabels[expediente.estado]}</span>
                                         </div>
                                     )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-gray-900">
+                                        {new Date(expediente.fecha_registro).toLocaleDateString('es-ES', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric'
+                                        })}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                        {new Date(expediente.fecha_registro).toLocaleTimeString('es-ES', {
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
+                                    </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex justify-end gap-2">

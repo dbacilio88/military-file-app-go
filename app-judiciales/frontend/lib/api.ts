@@ -161,6 +161,7 @@ const DEMO_EXPEDIENTES: Expediente[] = [
     situacion_militar: 'Actividad',
     ubicacion: 'Archivo Central - Estante A1',
     orden: 1,
+    ano: 2024,
     estado: 'dentro',
     fecha_registro: '2024-01-15',
     fecha_actualizacion: '2024-01-15',
@@ -178,6 +179,7 @@ const DEMO_EXPEDIENTES: Expediente[] = [
     situacion_militar: 'Retiro',
     ubicacion: 'Archivo Central - Estante B2',
     orden: 2,
+    ano: 2023,
     estado: 'fuera',
     fecha_registro: '2024-02-10',
     fecha_actualizacion: '2024-02-10',
@@ -195,6 +197,7 @@ const DEMO_EXPEDIENTES: Expediente[] = [
     situacion_militar: 'Actividad',
     ubicacion: 'Archivo Central - Estante C3',
     orden: 3,
+    ano: 2024,
     estado: 'dentro',
     fecha_registro: '2024-03-05',
     fecha_actualizacion: '2024-03-05',
@@ -212,6 +215,7 @@ const DEMO_EXPEDIENTES: Expediente[] = [
     situacion_militar: 'Actividad',
     ubicacion: 'Archivo Central - Estante D4',
     orden: 4,
+    ano: 2022,
     estado: 'dentro',
     fecha_registro: '2024-04-12',
     fecha_actualizacion: '2024-04-12',
@@ -229,6 +233,7 @@ const DEMO_EXPEDIENTES: Expediente[] = [
     situacion_militar: 'Retiro',
     ubicacion: 'Archivo Central - Estante E5',
     orden: 5,
+    ano: 2021,
     estado: 'fuera',
     fecha_registro: '2024-05-20',
     fecha_actualizacion: '2024-05-20',
@@ -672,6 +677,14 @@ export async function searchExpedientes(
   if (params.grado) queryParams.append('grado', params.grado);
   if (params.situacion_militar) queryParams.append('situacion_militar', params.situacion_militar);
   if (params.estado) queryParams.append('estado', params.estado);
+  if (params.apellidos_nombres) queryParams.append('apellidos_nombres', params.apellidos_nombres);
+  if (params.cip) queryParams.append('cip', params.cip);
+  if (params.ubicacion) queryParams.append('ubicacion', params.ubicacion);
+  if (params.orden) queryParams.append('orden', params.orden.toString());
+  if (params.fecha_inicio) queryParams.append('fecha_inicio', params.fecha_inicio);
+  if (params.fecha_fin) queryParams.append('fecha_fin', params.fecha_fin);
+  if (params.sort_by) queryParams.append('sort_by', params.sort_by);
+  if (params.sort_order) queryParams.append('sort_order', params.sort_order);
   if (params.page) queryParams.append('page', params.page.toString());
   if (params.limit) queryParams.append('limit', params.limit.toString());
 

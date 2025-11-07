@@ -54,6 +54,7 @@ type Expediente struct {
 	CIP                string              `json:"cip" bson:"cip" binding:"required" validate:"required"`
 	Estado             EstadoExpediente    `json:"estado" bson:"estado" validate:"required,oneof=dentro fuera"`
 	Ubicacion          string              `json:"ubicacion" bson:"ubicacion" binding:"required" validate:"required"`
+	Ano                int                 `json:"ano" bson:"ano" binding:"required,min=1900,max=2100" validate:"required,min=1900,max=2100"`
 	FechaRegistro      time.Time           `json:"fecha_registro" bson:"fecha_registro" validate:"required"`
 	FechaActualizacion time.Time           `json:"fecha_actualizacion" bson:"fecha_actualizacion" validate:"required"`
 	Orden              int                 `json:"orden" bson:"orden" binding:"required,min=1" validate:"required,min=1"`
@@ -74,6 +75,7 @@ type ExpedienteSearchParams struct {
 	Estado           EstadoExpediente `form:"estado"`
 	Ubicacion        string           `form:"ubicacion"`
 	Orden            int              `form:"orden"`
+	Ano              int              `form:"ano"`
 	FechaInicio      time.Time        `form:"fecha_inicio"`
 	FechaFin         time.Time        `form:"fecha_fin"`
 	Page             int              `form:"page"`
@@ -91,6 +93,7 @@ type CreateExpedienteRequest struct {
 	CIP              string           `json:"cip" binding:"required" validate:"required"`
 	Ubicacion        string           `json:"ubicacion" binding:"required" validate:"required"`
 	Orden            int              `json:"orden" binding:"required,min=1" validate:"required,min=1"`
+	Ano              int              `json:"ano" binding:"required,min=1900,max=2100" validate:"required,min=1900,max=2100"`
 }
 
 // UpdateExpedienteRequest represents the request for updating an expediente
@@ -103,6 +106,7 @@ type UpdateExpedienteRequest struct {
 	Estado           *EstadoExpediente `json:"estado,omitempty" validate:"omitempty,oneof=dentro fuera"`
 	Ubicacion        *string           `json:"ubicacion,omitempty"`
 	Orden            *int              `json:"orden,omitempty" validate:"omitempty,min=1"`
+	Ano              *int              `json:"ano,omitempty" validate:"omitempty,min=1900,max=2100"`
 }
 
 // ExpedienteResponse represents expediente response with metadata
@@ -126,6 +130,7 @@ type BulkImportExpediente struct {
 	CIP              string `json:"cip" excel:"CIP"`
 	ApellidosNombres string `json:"apellidos_nombres" excel:"ApellidosNombres"`
 	NumeroPaginas    string `json:"numero_paginas" excel:"NumeroPaginas"`
+	Ano              string `json:"ano" excel:"Ano"`
 	Fila             int    `json:"fila,omitempty"`
 }
 

@@ -143,6 +143,9 @@ func (r *ExpedienteRepository) Search(params models.ExpedienteSearchParams) ([]*
 	if params.Orden > 0 {
 		filter["orden"] = params.Orden
 	}
+	if params.Ano > 0 {
+		filter["ano"] = params.Ano
+	}
 	if !params.FechaInicio.IsZero() || !params.FechaFin.IsZero() {
 		dateFilter := bson.M{}
 		if !params.FechaInicio.IsZero() {

@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { useToast } from '@/contexts/toastContext'
+import { useToast } from '@/contexts/ToastContext'
 import { bulkImportExpedientes } from '@/lib/api'
 import { Grado, GradoLabels, BulkImportResult } from '@/lib/types'
 import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, X, Download, FileX, Eye } from 'lucide-react'
@@ -14,6 +14,7 @@ interface ExcelRow {
     CIP: string
     ApellidosNombres: string
     NumeroPaginas: number | string
+    Ano: number | string
     // Campos calculados
     rowIndex?: number
     errors?: string[]
@@ -39,7 +40,7 @@ export function ExpedientesImport({ onImportComplete, onCancel }: ExpedientesImp
     const fileInputRef = useRef<HTMLInputElement>(null)
     const toast = useToast()
 
-    const requiredHeaders = ['Grado', 'CIP', 'ApellidosNombres', 'NumeroPaginas']
+    const requiredHeaders = ['Grado', 'CIP', 'ApellidosNombres', 'NumeroPaginas', 'Ano']
     const validGrados: Grado[] = ['GRAL', 'CRL', 'TTE CRL', 'MY', 'CAP', 'TTE', 'STTE', 'TCO', 'SSOO', 'EC', 'TROPA']
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,6 +193,16 @@ export function ExpedientesImport({ onImportComplete, onCancel }: ExpedientesImp
                 errors.push('Número de Páginas debe ser un número mayor a 0')
             }
 
+            // Validar Año
+            const ano = Number(row.Ano)
+            if (!ano || isNaN(ano)) {
+                errors.push('Año es requerido')
+            } else if (ano < 1900 || ano > 2100) {
+                errors.push('Año debe estar entre 1900 y 2100')
+            } else if (!Number.isInteger(ano)) {
+                errors.push('Año debe ser un número entero')
+            }
+
             const processedRow = { ...row, errors, duplicateColor }
 
             if (errors.length > 0) {
@@ -245,13 +256,15 @@ export function ExpedientesImport({ onImportComplete, onCancel }: ExpedientesImp
                 Grado: 'CAP',
                 CIP: '123456789',
                 ApellidosNombres: 'APELLIDO NOMBRE',
-                NumeroPaginas: 10
+                NumeroPaginas: 10,
+                Ano: 2024
             },
             {
                 Grado: 'MY',
                 CIP: '987654321',
                 ApellidosNombres: 'OTRO APELLIDO NOMBRE',
-                NumeroPaginas: 15
+                NumeroPaginas: 15,
+                Ano: 2023
             }
         ]
         
@@ -306,7 +319,7 @@ export function ExpedientesImport({ onImportComplete, onCancel }: ExpedientesImp
                                 Seleccionar archivo Excel
                             </h3>
                             <p className="text-sm text-gray-500 mb-6">
-                                El archivo debe contener las columnas: <strong>Grado</strong>, <strong>CIP</strong>, <strong>ApellidosNombres</strong>, <strong>NumeroPaginas</strong>
+                                El archivo debe contener las columnas: <strong>Grado</strong>, <strong>CIP</strong>, <strong>ApellidosNombres</strong>, <strong>NumeroPaginas</strong>, <strong>Ano</strong>
                             </p>
                             
                             <input
@@ -359,6 +372,7 @@ export function ExpedientesImport({ onImportComplete, onCancel }: ExpedientesImp
                                     <li>• <strong>CIP:</strong> Exactamente 9 dígitos numéricos, único</li>
                                     <li>• <strong>ApellidosNombres:</strong> Mínimo 3 caracteres</li>
                                     <li>• <strong>NumeroPaginas:</strong> Número entero &gt; 0</li>
+                                    <li>• <strong>Ano:</strong> Año entre 1900 y 2100</li>
                                 </ul>
                             </div>
                         </div>
@@ -413,6 +427,7 @@ export function ExpedientesImport({ onImportComplete, onCancel }: ExpedientesImp
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">CIP</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Apellidos y Nombres</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Núm. Páginas</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Año</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Errores</th>
                                     </tr>
                                 </thead>
@@ -442,8 +457,8 @@ export function ExpedientesImport({ onImportComplete, onCancel }: ExpedientesImp
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-gray-900">{row.ApellidosNombres}</td>
                                                 <td className="px-4 py-3 text-sm text-gray-900">{row.NumeroPaginas}</td>
-                                                <td className="px-4 py-3 text-sm">
-                                                    {row.errors && row.errors.length > 0 && (
+                                                <td className="px-4 py-3 text-sm text-gray-900">{row.Ano}</td>
+                                                <td className="px-4 py-3 text-sm">{row.errors && row.errors.length > 0 && (
                                                         <div className="text-red-600">
                                                             {row.errors.map((error, i) => (
                                                                 <div key={i}>• {error}</div>
@@ -479,6 +494,7 @@ export function ExpedientesImport({ onImportComplete, onCancel }: ExpedientesImp
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-gray-900">{row.ApellidosNombres}</td>
                                                 <td className="px-4 py-3 text-sm text-gray-900">{row.NumeroPaginas}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900">{row.Ano}</td>
                                                 <td className="px-4 py-3 text-sm text-green-600">
                                                     ✓ Válido
                                                 </td>

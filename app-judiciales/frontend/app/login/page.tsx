@@ -2,7 +2,7 @@
 
 import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/contexts/toastContext';
+import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/authContext';
 
 export default function LoginPage() {

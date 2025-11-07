@@ -377,7 +377,7 @@ func (s *ExpedienteService) BulkImportFromExcel(file *multipart.FileHeader, crea
 	}
 
 	// Validate headers
-	expectedHeaders := []string{"Grado", "CIP", "ApellidosNombres", "NumeroPaginas"}
+	expectedHeaders := []string{"Grado", "CIP", "ApellidosNombres", "NumeroPaginas", "Ano"}
 	if err := s.validateHeaders(rows[0], expectedHeaders); err != nil {
 		return nil, err
 	}
@@ -385,8 +385,13 @@ func (s *ExpedienteService) BulkImportFromExcel(file *multipart.FileHeader, crea
 	// Process data rows
 	var bulkData []models.BulkImportExpediente
 	for i, row := range rows[1:] {
-		if len(row) < 4 {
+		if len(row) < 5 {
 			continue // Skip incomplete rows
+		}
+
+		ano := ""
+		if len(row) > 4 {
+			ano = strings.TrimSpace(row[4])
 		}
 
 		bulkData = append(bulkData, models.BulkImportExpediente{
@@ -394,6 +399,7 @@ func (s *ExpedienteService) BulkImportFromExcel(file *multipart.FileHeader, crea
 			CIP:              strings.TrimSpace(row[1]),
 			ApellidosNombres: strings.TrimSpace(row[2]),
 			NumeroPaginas:    strings.TrimSpace(row[3]),
+			Ano:              ano,
 			Fila:             i + 2, // +2 because index starts at 0 and we skip header
 		})
 	}
@@ -588,6 +594,25 @@ func (s *ExpedienteService) validateAndConvertBulkRecord(data models.BulkImportE
 		}
 	}
 
+	// Validate Ano (Year)
+	var ano int
+	if anoStr := strings.TrimSpace(data.Ano); anoStr == "" {
+		// If not provided, use current year as default
+		ano = time.Now().Year()
+	} else {
+		var err error
+		ano, err = strconv.Atoi(anoStr)
+		if err != nil || ano < 1900 || ano > 2100 {
+			errors = append(errors, models.BulkImportError{
+				Fila:     data.Fila,
+				Campo:    "Ano",
+				Valor:    data.Ano,
+				Error:    "Ano debe ser un número entero válido entre 1900 y 2100",
+				Registro: data,
+			})
+		}
+	}
+
 	// Return errors if any
 	if len(errors) > 0 {
 		return nil, errors
@@ -603,6 +628,7 @@ func (s *ExpedienteService) validateAndConvertBulkRecord(data models.BulkImportE
 		CIP:                strings.TrimSpace(data.CIP),
 		Estado:             models.EstadoDentro, // Default value
 		Ubicacion:          "Archivo Central",   // Default value
+		Ano:                ano,
 		FechaRegistro:      now,
 		FechaActualizacion: now,
 		Orden:              1, // Temporary value, will be updated by repository

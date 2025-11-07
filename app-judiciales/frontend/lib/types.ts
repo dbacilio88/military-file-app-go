@@ -254,6 +254,7 @@ export interface Expediente {
     ubicacion: string;
     orden: number;
     estado: ExpedienteEstado;
+    ano: number; // Año de 4 dígitos
     fecha_registro: string;
     fecha_actualizacion: string;
     created_at: string;
@@ -270,6 +271,7 @@ export interface CreateExpedienteInput {
     situacion_militar: SituacionMilitar;
     ubicacion: string;
     orden: number;
+    ano: number; // Año de 4 dígitos
 }
 
 export interface UpdateExpedienteInput {
@@ -281,6 +283,7 @@ export interface UpdateExpedienteInput {
     ubicacion?: string;
     orden?: number;
     estado?: ExpedienteEstado;
+    ano?: number; // Año de 4 dígitos
 }
 
 export interface ExpedienteSearchParams {
@@ -289,6 +292,14 @@ export interface ExpedienteSearchParams {
     grado?: Grado;
     situacion_militar?: SituacionMilitar;
     estado?: ExpedienteEstado;
+    apellidos_nombres?: string;
+    cip?: string;
+    ubicacion?: string;
+    orden?: number;
+    fecha_inicio?: string; // ISO date string
+    fecha_fin?: string; // ISO date string
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
 }
 
 export interface ListExpedientesResponse {
@@ -340,6 +351,21 @@ export interface UbicacionStats {
     total_paginas: number;
 }
 
+export interface RegistroMensual {
+    ano: number;
+    mes: number;
+    mes_nombre: string;
+    total: number;
+    porcentaje: number;
+}
+
+export interface RegistroAnual {
+    ano: number;
+    total: number;
+    porcentaje: number;
+}
+
+// Para mantener compatibilidad con el código existente
 export interface EstadisticaTemporalPoint {
     ano: number;
     mes?: number;
@@ -349,8 +375,8 @@ export interface EstadisticaTemporalPoint {
 }
 
 export interface EstadisticasTemporales {
-    registros_por_mes?: EstadisticaTemporalPoint[] | null;
-    registros_por_ano?: EstadisticaTemporalPoint[] | null;
+    registros_por_mes?: RegistroMensual[] | null;
+    registros_por_ano?: RegistroAnual[] | null;
     ultimos_30_dias: number;
     tendencia_mensual: string;
 }

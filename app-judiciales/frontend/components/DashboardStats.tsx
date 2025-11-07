@@ -117,6 +117,13 @@ export default function DashboardStatsComponent() {
             { mes: 10, ano: 2024, mes_nombre: 'Oct', total: 132, porcentaje: 11.1 },
             { mes: 11, ano: 2024, mes_nombre: 'Nov', total: 121, porcentaje: 10.2 },
             { mes: 12, ano: 2024, mes_nombre: 'Dic', total: 140, porcentaje: 11.8 }
+          ],
+          registros_por_ano: [
+            { ano: 2020, total: 245, porcentaje: 20.6 },
+            { ano: 2021, total: 280, porcentaje: 23.5 },
+            { ano: 2022, total: 315, porcentaje: 26.5 },
+            { ano: 2023, total: 225, porcentaje: 18.9 },
+            { ano: 2024, total: 125, porcentaje: 10.5 }
           ]
         },
         generado_en: new Date().toISOString()
@@ -811,6 +818,143 @@ export default function DashboardStatsComponent() {
                 })()}
               </svg>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Estadísticas anuales - Bar Chart */}
+      {estadisticas_temporales?.registros_por_ano && estadisticas_temporales.registros_por_ano.length > 0 && (
+        <div className="bg-white shadow-sm rounded-lg p-6">
+          <h4 className="font-semibold mb-4 text-gray-900">Evolución anual de registros</h4>
+          <div className="overflow-x-auto">
+            <div className="min-w-full" style={{ height: '300px' }}>
+              <svg className="w-full h-full" viewBox="0 0 800 300" preserveAspectRatio="xMidYMid meet">
+                {/* Área del gráfico */}
+                <defs>
+                  <linearGradient id="barGradient" x1="0%" y1="100%" x2="0%" y2="0%">
+                    <stop offset="0%" style={{stopColor: '#10b981', stopOpacity: 0.8}} />
+                    <stop offset="100%" style={{stopColor: '#059669', stopOpacity: 0.9}} />
+                  </linearGradient>
+                </defs>
+                
+                {/* Grid lines horizontales */}
+                <g stroke="#e5e7eb" strokeWidth="1" opacity="0.5">
+                  {[0, 1, 2, 3, 4].map(i => (
+                    <line key={`h-${i}`} x1="80" y1={50 + i * 50} x2="720" y2={50 + i * 50} />
+                  ))}
+                </g>
+                
+                {/* Barras del gráfico */}
+                {(() => {
+                  const maxValue = Math.max(...estadisticas_temporales.registros_por_ano.map(r => r.total));
+                  const barWidth = Math.min(80, (640 / estadisticas_temporales.registros_por_ano.length) * 0.7);
+                  const barSpacing = 640 / estadisticas_temporales.registros_por_ano.length;
+                  
+                  return (
+                    <>
+                      {/* Barras */}
+                      {estadisticas_temporales.registros_por_ano.map((registro, index) => {
+                        const barHeight = (registro.total / maxValue) * 200;
+                        const x = 80 + (index * barSpacing) + (barSpacing - barWidth) / 2;
+                        const y = 250 - barHeight;
+                        
+                        return (
+                          <g key={index}>
+                            {/* Barra principal */}
+                            <rect
+                              x={x}
+                              y={y}
+                              width={barWidth}
+                              height={barHeight}
+                              fill="url(#barGradient)"
+                              rx="4"
+                              className="transition-all duration-1000 ease-out hover:opacity-80"
+                              style={{
+                                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+                              }}
+                            />
+                            
+                            {/* Valor encima de la barra */}
+                            <text
+                              x={x + barWidth / 2}
+                              y={y - 8}
+                              textAnchor="middle"
+                              fontSize="12"
+                              fill="#374151"
+                              fontWeight="bold"
+                            >
+                              {registro.total}
+                            </text>
+                            
+                            {/* Porcentaje */}
+                            <text
+                              x={x + barWidth / 2}
+                              y={y + barHeight / 2}
+                              textAnchor="middle"
+                              fontSize="10"
+                              fill="#ffffff"
+                              fontWeight="bold"
+                            >
+                              {registro.porcentaje.toFixed(1)}%
+                            </text>
+                          </g>
+                        );
+                      })}
+                      
+                      {/* Etiquetas del eje Y (valores) */}
+                      {[0, 1, 2, 3, 4].map(i => {
+                        const value = (maxValue * i / 4);
+                        return (
+                          <text
+                            key={`y-label-${i}`}
+                            x="70"
+                            y={255 - i * 50}
+                            textAnchor="end"
+                            fontSize="12"
+                            fill="#6b7280"
+                          >
+                            {Math.round(value)}
+                          </text>
+                        );
+                      })}
+                      
+                      {/* Etiquetas del eje X (años) */}
+                      {estadisticas_temporales.registros_por_ano.map((registro, index) => {
+                        const x = 80 + (index * barSpacing) + barSpacing / 2;
+                        return (
+                          <text
+                            key={`x-label-${index}`}
+                            x={x}
+                            y="270"
+                            textAnchor="middle"
+                            fontSize="12"
+                            fill="#6b7280"
+                            fontWeight="bold"
+                          >
+                            {registro.ano}
+                          </text>
+                        );
+                      })}
+                      
+                      {/* Líneas del eje */}
+                      <line x1="80" y1="250" x2="720" y2="250" stroke="#374151" strokeWidth="2" />
+                      <line x1="80" y1="50" x2="80" y2="250" stroke="#374151" strokeWidth="2" />
+                    </>
+                  );
+                })()}
+              </svg>
+            </div>
+          </div>
+          
+          {/* Resumen debajo del gráfico */}
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+            {estadisticas_temporales.registros_por_ano.map((registro, index) => (
+              <div key={index} className="bg-green-50 rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-green-800">{registro.ano}</div>
+                <div className="text-2xl font-bold text-green-600">{registro.total}</div>
+                <div className="text-sm text-green-500">{registro.porcentaje.toFixed(1)}% del total</div>
+              </div>
+            ))}
           </div>
         </div>
       )}

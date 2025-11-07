@@ -20,7 +20,7 @@ import {
     XCircle,
     RefreshCw
 } from 'lucide-react'
-import { useToast } from '@/contexts/toastContext'
+import { useToast } from '@/contexts/ToastContext'
 import { UsersTable } from './table'
 import { UserForm } from './form'
 import { Pagination } from './pagination'

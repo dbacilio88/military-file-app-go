@@ -23,6 +23,7 @@ export function ExpedienteForm({ expediente, onSubmit, onCancel }: ExpedienteFor
         situacion_militar: expediente?.situacion_militar || '' as SituacionMilitar,
         ubicacion: expediente?.ubicacion || '',
         orden: expediente?.orden || 1,
+        ano: expediente?.ano || new Date().getFullYear(), // Año por defecto: año actual
         ...(expediente && { estado: expediente.estado })
     })
     const [errors, setErrors] = useState<Record<string, string>>({})
@@ -40,6 +41,7 @@ export function ExpedienteForm({ expediente, onSubmit, onCancel }: ExpedienteFor
                 situacion_militar: expediente.situacion_militar,
                 ubicacion: expediente.ubicacion,
                 orden: expediente.orden,
+                ano: expediente.ano,
                 estado: expediente.estado
             })
         }
@@ -241,6 +243,27 @@ export function ExpedienteForm({ expediente, onSubmit, onCancel }: ExpedienteFor
                     )}
                 </div>
 
+                {/* Año */}
+                <div>
+                    <label htmlFor="ano" className="block text-sm font-medium text-gray-700 mb-1">
+                        Año <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                        id="ano"
+                        type="number"
+                        min="1900"
+                        max="2100"
+                        value={formData.ano}
+                        onChange={(e) => handleChange('ano', parseInt(e.target.value) || new Date().getFullYear())}
+                        className={errors.ano ? 'border-red-500' : ''}
+                        disabled={isSubmitting}
+                        placeholder="Ej: 2025"
+                    />
+                    {errors.ano && (
+                        <p className="mt-1 text-sm text-red-600">{errors.ano}</p>
+                    )}
+                </div>
+
                 {/* Estado (only for updates) */}
                 {isUpdate && (
                     <div>
@@ -288,6 +311,44 @@ export function ExpedienteForm({ expediente, onSubmit, onCancel }: ExpedienteFor
                     )}
                 </div>
             </div>
+
+            {/* Información de fechas (solo para expedientes existentes) */}
+            {expediente && (
+                <div className="border-t border-gray-200 pt-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Información del Registro</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Fecha de Registro
+                            </label>
+                            <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-900">
+                                {new Date(expediente.fecha_registro).toLocaleString('es-ES', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Última Actualización
+                            </label>
+                            <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-900">
+                                {new Date(expediente.fecha_actualizacion).toLocaleString('es-ES', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">

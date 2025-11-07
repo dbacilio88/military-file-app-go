@@ -1259,6 +1259,11 @@ components:
         orden:
           type: integer
           minimum: 1
+        ano:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+          description: Año del expediente (4 dígitos)
         created_at:
           type: string
           format: date-time
@@ -1280,6 +1285,7 @@ components:
         - cip
         - ubicacion
         - orden
+        - ano
       properties:
         grado:
           type: string
@@ -1300,6 +1306,11 @@ components:
         orden:
           type: integer
           minimum: 1
+        ano:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+          description: Año del expediente (4 dígitos)
 
     UpdateExpedienteRequest:
       type: object
@@ -1326,6 +1337,11 @@ components:
         orden:
           type: integer
           minimum: 1
+        ano:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+          description: Año del expediente (4 dígitos)
 
     Profile:
       type: object
@@ -1581,6 +1597,10 @@ components:
           type: string
           description: Número de páginas como aparece en Excel (string antes de validación)
           example: "45"
+        ano:
+          type: string
+          description: Año como aparece en Excel (string antes de validación)
+          example: "2024"
         fila:
           type: integer
           description: Número de fila en el Excel
