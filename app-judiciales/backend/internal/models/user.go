@@ -108,6 +108,8 @@ type AuthResponse struct {
 	AccessToken  string       `json:"access_token"`
 	RefreshToken string       `json:"refresh_token"`
 	ExpiresAt    time.Time    `json:"expires_at"`
+	Permissions  []Permission `json:"permissions"`
+	Profile      *Profile     `json:"profile,omitempty"`
 }
 
 // RefreshTokenRequest represents refresh token request

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"expedientes-backend/internal/models"
 	"expedientes-backend/internal/repository"
@@ -13,14 +14,16 @@ import (
 // AuthService handles authentication logic
 type AuthService struct {
 	userRepo      *repository.UserRepository
+	profileRepo   *repository.ProfileRepository
 	jwtSecret     string
 	jwtExpiration time.Duration
 }
 
 // NewAuthService creates a new auth service
-func NewAuthService(userRepo *repository.UserRepository, jwtSecret string, jwtExpiration time.Duration) *AuthService {
+func NewAuthService(userRepo *repository.UserRepository, profileRepo *repository.ProfileRepository, jwtSecret string, jwtExpiration time.Duration) *AuthService {
 	return &AuthService{
 		userRepo:      userRepo,
+		profileRepo:   profileRepo,
 		jwtSecret:     jwtSecret,
 		jwtExpiration: jwtExpiration,
 	}
@@ -44,6 +47,18 @@ func (s *AuthService) Login(email, password string) (*models.AuthResponse, error
 		return nil, errors.New("credenciales inválidas")
 	}
 
+	// Get user profile and permissions
+	var profile *models.Profile
+	var permissions []models.Permission
+
+	if !user.ProfileID.IsZero() {
+		ctx := context.Background()
+		profile, err = s.profileRepo.GetProfileByID(ctx, user.ProfileID)
+		if err == nil && profile != nil {
+			permissions = profile.Permissions
+		}
+	}
+
 	// Generate tokens
 	accessToken, err := s.generateAccessToken(user)
 	if err != nil {
@@ -63,6 +78,8 @@ func (s *AuthService) Login(email, password string) (*models.AuthResponse, error
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresAt:    expiresAt,
+		Permissions:  permissions,
+		Profile:      profile,
 	}, nil
 }
 
@@ -93,6 +110,18 @@ func (s *AuthService) RefreshToken(refreshTokenString string) (*models.AuthRespo
 		return nil, errors.New("cuenta deshabilitada")
 	}
 
+	// Get user profile and permissions
+	var profile *models.Profile
+	var permissions []models.Permission
+
+	if !user.ProfileID.IsZero() {
+		ctx := context.Background()
+		profile, err = s.profileRepo.GetProfileByID(ctx, user.ProfileID)
+		if err == nil && profile != nil {
+			permissions = profile.Permissions
+		}
+	}
+
 	// Generate new access token
 	accessToken, err := s.generateAccessToken(user)
 	if err != nil {
@@ -112,6 +141,8 @@ func (s *AuthService) RefreshToken(refreshTokenString string) (*models.AuthRespo
 		AccessToken:  accessToken,
 		RefreshToken: newRefreshToken,
 		ExpiresAt:    expiresAt,
+		Permissions:  permissions,
+		Profile:      profile,
 	}, nil
 }
 

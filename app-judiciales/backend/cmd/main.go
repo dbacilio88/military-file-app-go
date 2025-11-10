@@ -70,10 +70,13 @@ func main() {
 	expedienteRepo := repository.NewExpedienteRepository(db)
 
 	// Initialize services
-	authService := services.NewAuthService(userRepo, cfg.JWTSecret, cfg.JWTExpiration)
+	authService := services.NewAuthService(userRepo, profileRepo, cfg.JWTSecret, cfg.JWTExpiration)
 	profileService := services.NewProfileService(profileRepo)
 	userService := services.NewUserServiceWithServices(userRepo, profileService)
 	expedienteService := services.NewExpedienteService(expedienteRepo)
+
+	// Set profile repository for middleware permission checking
+	middleware.SetProfileRepository(profileRepo)
 
 	// Initialize database
 	if err := initializeDatabase(ctx, db, profileRepo, profileService, userService); err != nil {

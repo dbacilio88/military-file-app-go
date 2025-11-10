@@ -9,8 +9,8 @@ export default function LoginPage() {
     const router = useRouter();
     const toast = useToast();
     const { user, login, isLoading } = useAuth();
-    const [email, setEmail] = useState('admin@sistema.mil');
-    const [password, setPassword] = useState('admin123');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [loginLoading, setLoginLoading] = useState(false);
 
     useEffect(() => {

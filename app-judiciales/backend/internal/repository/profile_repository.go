@@ -221,20 +221,31 @@ func (r *ProfileRepository) InitializeSystemProfiles(ctx context.Context) error 
 			Slug:        "administrador",
 			Description: "Acceso completo al sistema de expedientes militares",
 			Permissions: []models.Permission{
+				// User permissions
 				models.PermissionUserRead,
 				models.PermissionUserCreate,
 				models.PermissionUserUpdate,
 				models.PermissionUserDelete,
 				models.PermissionUserManage,
+				// Profile permissions
 				models.PermissionProfileRead,
-				models.PermissionProfileWrite,
+				models.PermissionProfileCreate,
+				models.PermissionProfileUpdate,
+				models.PermissionProfileDelete,
+				models.PermissionProfileWrite, // Backward compatibility
+				// Expediente permissions
 				models.PermissionExpedienteRead,
 				models.PermissionExpedienteCreate,
 				models.PermissionExpedienteUpdate,
 				models.PermissionExpedienteDelete,
 				models.PermissionExpedienteManage,
+				// System permissions
 				models.PermissionSystemRead,
 				models.PermissionSystemAdmin,
+				// Dashboard permissions
+				models.PermissionDashboardView,
+				models.PermissionDashboardStats,
+				models.PermissionDashboardExport,
 			},
 			IsSystem: true,
 			Active:   true,
@@ -252,7 +263,32 @@ func (r *ProfileRepository) InitializeSystemProfiles(ctx context.Context) error 
 			if err != nil {
 				return fmt.Errorf("failed to create system profile %s: %w", profile.Slug, err)
 			}
+		} else {
+			// Update existing system profile to ensure it has all required permissions
+			err := r.UpdateSystemProfile(ctx, &profile)
+			if err != nil {
+				return fmt.Errorf("failed to update system profile %s: %w", profile.Slug, err)
+			}
 		}
+	}
+
+	return nil
+}
+
+// UpdateSystemProfile updates an existing system profile with new permissions
+func (r *ProfileRepository) UpdateSystemProfile(ctx context.Context, profile *models.Profile) error {
+	filter := bson.M{"slug": profile.Slug}
+	update := bson.M{
+		"$set": bson.M{
+			"permissions": profile.Permissions,
+			"description": profile.Description,
+			"updated_at":  time.Now(),
+		},
+	}
+
+	_, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return fmt.Errorf("failed to update system profile: %w", err)
 	}
 
 	return nil

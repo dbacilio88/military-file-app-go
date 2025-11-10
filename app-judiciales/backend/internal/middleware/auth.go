@@ -1,8 +1,10 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"expedientes-backend/internal/models"
+	"expedientes-backend/internal/repository"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -19,6 +22,14 @@ const (
 	errInsufficientPermissionsOperation = "El usuario no tiene los permisos requeridos para esta operación"
 	errInsufficientRoles                = "El usuario no tiene los roles requeridos"
 )
+
+// Global repository for permission checking
+var profileRepository *repository.ProfileRepository
+
+// SetProfileRepository sets the profile repository for permission checking
+func SetProfileRepository(repo *repository.ProfileRepository) {
+	profileRepository = repo
+}
 
 type Claims struct {
 	UserID    string   `json:"user_id"`
@@ -194,10 +205,77 @@ func RequirePermission(permission models.Permission) gin.HandlerFunc {
 			return
 		}
 
-		// For simplified architecture, we'll allow all authenticated requests
-		// In a production environment, this should check user permissions through their profile
+		// Get user profile ID from context
+		userProfileIDStr, exists := c.Get("userProfileID")
+		if !exists || userProfileIDStr == "" {
+			respondWithForbiddenError(c, "PROFILE_NOT_FOUND", "Perfil de usuario no encontrado")
+			return
+		}
+
+		// Convert profile ID string to ObjectID
+		profileID, err := primitive.ObjectIDFromHex(userProfileIDStr.(string))
+		if err != nil {
+			respondWithForbiddenError(c, "INVALID_PROFILE_ID", "ID de perfil inválido")
+			return
+		}
+
+		// Check if user has the required permission
+		hasPermission, err := checkUserPermission(profileID, permission)
+		if err != nil {
+			log.Printf("Error checking permissions for profile %s: %v", profileID.Hex(), err)
+			respondWithForbiddenError(c, "PERMISSION_CHECK_ERROR", "Error verificando permisos")
+			return
+		}
+
+		if !hasPermission {
+			respondWithForbiddenError(c, "INSUFFICIENT_PERMISSIONS", errInsufficientPermissionsOperation)
+			return
+		}
+
 		c.Next()
 	}
+}
+
+// checkUserPermission checks if a user profile has a specific permission
+func checkUserPermission(profileID primitive.ObjectID, requiredPermission models.Permission) (bool, error) {
+	if profileRepository == nil {
+		log.Printf("Profile repository not initialized")
+		return false, errors.New("profile repository not initialized")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Get the user's profile
+	profile, err := profileRepository.GetProfileByID(ctx, profileID)
+	if err != nil {
+		return false, err
+	}
+
+	if profile == nil {
+		return false, errors.New("profile not found")
+	}
+
+	// Check if profile is active
+	if !profile.Active {
+		return false, errors.New("profile is inactive")
+	}
+
+	// Check if the required permission exists in the profile's permissions
+	for _, permission := range profile.Permissions {
+		if permission == requiredPermission {
+			return true, nil
+		}
+	}
+
+	// Special case: system admin has all permissions
+	for _, permission := range profile.Permissions {
+		if permission == models.PermissionSystemAdmin {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // RequirePermissionLegacy middleware checks if user has required permission using memory (backward compatibility)
