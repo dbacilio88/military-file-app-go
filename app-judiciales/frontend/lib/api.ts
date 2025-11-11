@@ -674,6 +674,7 @@ export async function searchExpedientes(
 ): Promise<ApiResponse<{ data: Expediente[], pagination?: { total: number, totalPages: number } }>> {
   const queryParams = new URLSearchParams();
 
+  if (params.search) queryParams.append('search', params.search);
   if (params.grado) queryParams.append('grado', params.grado);
   if (params.situacion_militar) queryParams.append('situacion_militar', params.situacion_militar);
   if (params.estado) queryParams.append('estado', params.estado);
@@ -688,7 +689,7 @@ export async function searchExpedientes(
   if (params.page) queryParams.append('page', params.page.toString());
   if (params.limit) queryParams.append('limit', params.limit.toString());
 
-  const response = await safeFetch(`${API_BASE_URL}/expedientes?${queryParams}`, {
+  const response = await safeFetch(`${API_BASE_URL}/expedientes/search?${queryParams}`, {
     headers: getAuthHeaders(),
   });
   return handleResponse<ApiResponse<{ data: Expediente[], pagination?: { total: number, totalPages: number } }>>(response);
@@ -861,5 +862,37 @@ export async function getDashboardStats(): Promise<ApiResponse<DashboardStats>> 
     headers: getAuthHeaders(),
   });
   return handleResponse<ApiResponse<DashboardStats>>(response);
+}
+
+// Export expedientes as CSV - triggers a file download in the client
+export async function exportExpedientes(): Promise<void> {
+  const url = `${API_BASE_URL}/expedientes/export`;
+
+  // Use auth header but expect a binary response
+  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+  const headers: HeadersInit = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const response = await safeFetch(url, {
+    method: 'GET',
+    headers,
+  });
+
+  if (!response.ok) {
+    // try to read error body
+    const err = await response.json().catch(() => ({ error: 'Export failed' }));
+    throw new Error(err.error || 'Export failed');
+  }
+
+  const blob = await response.blob();
+  const filename = 'expedientes_export.csv';
+  const link = document.createElement('a');
+  const urlBlob = window.URL.createObjectURL(blob);
+  link.href = urlBlob;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(urlBlob);
 }
 

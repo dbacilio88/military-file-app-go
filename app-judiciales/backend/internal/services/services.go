@@ -308,6 +308,11 @@ func (s *ExpedienteService) Search(params models.ExpedienteSearchParams) ([]*mod
 	return s.expedienteRepo.Search(params)
 }
 
+// ExportAll returns minimal data for all expedientes to be exported
+func (s *ExpedienteService) ExportAll() ([]models.ExpedienteExport, error) {
+	return s.expedienteRepo.GetAllForExport()
+}
+
 // Update updates an expediente
 func (s *ExpedienteService) Update(id string, updates map[string]interface{}) error {
 	// If CIP is being updated, check if it already exists

@@ -12,7 +12,9 @@ import { ExpedienteForm } from './form'
 import { ExpedientesImport } from './import'
 import { DeleteDialog } from './dialog'
 import { Pagination } from './pagination'
-import { Plus, Search, Filter, FileText, CheckCircle2, XCircle, X as XIcon, Trash2, UsersIcon, Upload, RefreshCw } from 'lucide-react'
+import { Plus, Search, Filter, FileText, CheckCircle2, XCircle, X as XIcon, Trash2, UsersIcon, Upload, RefreshCw, Download } from 'lucide-react'
+import { usePermissions } from '@/contexts/authContext'
+import { exportExpedientes } from '@/lib/api'
 
 export function ExpedientesManagement() {
     const [expedientes, setExpedientes] = useState<Expediente[]>([])
@@ -30,6 +32,8 @@ export function ExpedientesManagement() {
     const [totalExpedientes, setTotalExpedientes] = useState(0)
     const pageSize = 10
     const toast = useToast()
+
+    const { isAdmin } = usePermissions()
 
     // Filters and search
     const [gradoFilter, setGradoFilter] = useState<Grado | ''>('')
@@ -159,11 +163,11 @@ export function ExpedientesManagement() {
     }, [toast])
 
     useEffect(() => {
-        fetchExpedientes(1, {}) // Solo cargar la primera vez con valores por defecto
+        clearSearch() // Usar la función actualizada para cargar datos iniciales
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []) // Array vacío para ejecutar solo una vez
 
-    const clearSearch = () => {
+    const clearSearch = async () => {
         setSearchValue('')
         setSearchQuery('')
         setGradoFilter('')
@@ -171,54 +175,187 @@ export function ExpedientesManagement() {
         setEstadoFilter('')
         setFechaInicioFilter('')
         setFechaFinFilter('')
-        fetchExpedientes(1, {})
+        setCurrentPage(1) // Reset to first page
+        
+        const params: ExpedienteSearchParams = {
+            page: 1,
+            limit: pageSize,
+        }
+        
+        try {
+            setLoading(true)
+            const response = await searchExpedientes(params)
+            
+            if (response.success && response.data) {
+                const responseData = response.data as any
+                let expedientesArray: Expediente[] = []
+                
+                if (responseData.expedientes && Array.isArray(responseData.expedientes)) {
+                    expedientesArray = responseData.expedientes
+                } else if (responseData.expedientes === null) {
+                    expedientesArray = []
+                }
+                
+                setExpedientes(expedientesArray)
+                setTotalPages(responseData.total_pages || 1)
+                setTotalExpedientes(responseData.total || expedientesArray.length)
+                setCurrentPage(1)
+                
+                // Update stats for all results
+                setStats({
+                    total: expedientesArray.length,
+                    dentro: expedientesArray.filter(e => e.estado === 'dentro').length,
+                    fuera: expedientesArray.filter(e => e.estado === 'fuera').length
+                })
+            }
+        } catch (error) {
+            console.error('Error clearing search:', error)
+            toast.error('Error al limpiar búsqueda')
+        } finally {
+            setLoading(false)
+        }
     }
 
-    const handleSearch = (e: React.FormEvent) => {
+    const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault()
         setSearchQuery(searchValue)
-        if (searchValue.trim()) {
-            const filtered = expedientes.filter(exp =>
-                exp.apellidos_nombres.toLowerCase().includes(searchValue.toLowerCase()) ||
-                exp.cip.toLowerCase().includes(searchValue.toLowerCase())
-            )
-            setExpedientes(filtered)
-            setStats({
-                total: filtered.length,
-                dentro: filtered.filter(e => e.estado === 'dentro').length,
-                fuera: filtered.filter(e => e.estado === 'fuera').length
-            })
-        } else {
-            fetchExpedientes(currentPage, {
-                grado: gradoFilter || undefined,
-                situacion: situacionFilter || undefined,
-                estado: estadoFilter || undefined,
-                fecha_inicio: fechaInicioFilter || undefined,
-                fecha_fin: fechaFinFilter || undefined
-            })
+        setCurrentPage(1) // Reset to first page when searching
+        
+        // Use backend search with global search parameter
+        const params: ExpedienteSearchParams = {
+            page: 1,
+            limit: pageSize,
+            search: searchValue.trim() || undefined,
+            grado: gradoFilter || undefined,
+            situacion_militar: situacionFilter || undefined,
+            estado: estadoFilter || undefined,
+            fecha_inicio: fechaInicioFilter || undefined,
+            fecha_fin: fechaFinFilter || undefined,
+        }
+        
+        try {
+            setLoading(true)
+            const response = await searchExpedientes(params)
+            
+            if (response.success && response.data) {
+                const responseData = response.data as any
+                let expedientesArray: Expediente[] = []
+                
+                if (responseData.expedientes && Array.isArray(responseData.expedientes)) {
+                    expedientesArray = responseData.expedientes
+                } else if (responseData.expedientes === null) {
+                    expedientesArray = []
+                }
+                
+                setExpedientes(expedientesArray)
+                setTotalPages(responseData.total_pages || 1)
+                setTotalExpedientes(responseData.total || expedientesArray.length)
+                setCurrentPage(1)
+                
+                // Update search-specific stats
+                setStats({
+                    total: expedientesArray.length,
+                    dentro: expedientesArray.filter(e => e.estado === 'dentro').length,
+                    fuera: expedientesArray.filter(e => e.estado === 'fuera').length
+                })
+            }
+        } catch (error) {
+            console.error('Error searching expedientes:', error)
+            toast.error('Error al buscar los expedientes')
+        } finally {
+            setLoading(false)
         }
     }
 
     const handlePageChange = (page: number) => {
         if (page >= 1 && page <= totalPages) {
-            fetchExpedientes(page, {
+            // Include search query if present
+            const params: ExpedienteSearchParams = {
+                page,
+                limit: pageSize,
+                search: searchQuery.trim() || undefined,
                 grado: gradoFilter || undefined,
-                situacion: situacionFilter || undefined,
+                situacion_militar: situacionFilter || undefined,
                 estado: estadoFilter || undefined,
                 fecha_inicio: fechaInicioFilter || undefined,
-                fecha_fin: fechaFinFilter || undefined
-            })
+                fecha_fin: fechaFinFilter || undefined,
+            }
+            
+            if (searchQuery.trim() || gradoFilter || situacionFilter || estadoFilter || fechaInicioFilter || fechaFinFilter) {
+                // Use search API
+                searchExpedientes(params).then(response => {
+                    if (response.success && response.data) {
+                        const responseData = response.data as any
+                        let expedientesArray: Expediente[] = []
+                        
+                        if (responseData.expedientes && Array.isArray(responseData.expedientes)) {
+                            expedientesArray = responseData.expedientes
+                        } else if (responseData.expedientes === null) {
+                            expedientesArray = []
+                        }
+                        
+                        setExpedientes(expedientesArray)
+                        setTotalPages(responseData.total_pages || 1)
+                        setTotalExpedientes(responseData.total || expedientesArray.length)
+                        setCurrentPage(page)
+                    }
+                }).catch(error => {
+                    console.error('Error changing page:', error)
+                    toast.error('Error al cambiar de página')
+                })
+            } else {
+                // Use basic fetch
+                fetchExpedientes(page, {})
+            }
         }
     }
 
-    const handleFilterChange = () => {
-        fetchExpedientes(1, {
+    const handleFilterChange = async () => {
+        setCurrentPage(1) // Reset to first page when filtering
+        
+        const params: ExpedienteSearchParams = {
+            page: 1,
+            limit: pageSize,
+            search: searchQuery.trim() || undefined,
             grado: gradoFilter || undefined,
-            situacion: situacionFilter || undefined,
+            situacion_militar: situacionFilter || undefined,
             estado: estadoFilter || undefined,
             fecha_inicio: fechaInicioFilter || undefined,
-            fecha_fin: fechaFinFilter || undefined
-        })
+            fecha_fin: fechaFinFilter || undefined,
+        }
+        
+        try {
+            setLoading(true)
+            const response = await searchExpedientes(params)
+            
+            if (response.success && response.data) {
+                const responseData = response.data as any
+                let expedientesArray: Expediente[] = []
+                
+                if (responseData.expedientes && Array.isArray(responseData.expedientes)) {
+                    expedientesArray = responseData.expedientes
+                } else if (responseData.expedientes === null) {
+                    expedientesArray = []
+                }
+                
+                setExpedientes(expedientesArray)
+                setTotalPages(responseData.total_pages || 1)
+                setTotalExpedientes(responseData.total || expedientesArray.length)
+                setCurrentPage(1)
+                
+                // Update stats for filtered results
+                setStats({
+                    total: expedientesArray.length,
+                    dentro: expedientesArray.filter(e => e.estado === 'dentro').length,
+                    fuera: expedientesArray.filter(e => e.estado === 'fuera').length
+                })
+            }
+        } catch (error) {
+            console.error('Error filtering expedientes:', error)
+            toast.error('Error al aplicar filtros')
+        } finally {
+            setLoading(false)
+        }
     }
 
     const handleCreateExpediente = () => {
@@ -447,6 +584,27 @@ export function ExpedientesManagement() {
                             >
                                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                             </Button>
+                            {isAdmin && (
+                                <Button
+                                    onClick={async () => {
+                                        try {
+                                            setLoading(true)
+                                            await exportExpedientes()
+                                            toast.success('Exportación iniciada, archivo descargado')
+                                        } catch (error: any) {
+                                            console.error('Error exporting expedientes:', error)
+                                            toast.error(error.message || 'Error al exportar expedientes')
+                                        } finally {
+                                            setLoading(false)
+                                        }
+                                    }}
+                                    variant="outline"
+                                    className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                                >
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Exportar Excel
+                                </Button>
+                            )}
                             <Button
                                 onClick={handleCreateExpediente}
                                 className="bg-indigo-600 hover:bg-indigo-700"

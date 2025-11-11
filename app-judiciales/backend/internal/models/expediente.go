@@ -68,6 +68,7 @@ type Expediente struct {
 
 // ExpedienteSearchParams represents search parameters for expedientes
 type ExpedienteSearchParams struct {
+	Search           string           `form:"search"` // Búsqueda general en apellidos/nombres y CIP
 	Grado            Grado            `form:"grado"`
 	ApellidosNombres string           `form:"apellidos_nombres"`
 	SituacionMilitar SituacionMilitar `form:"situacion_militar"`
@@ -132,6 +133,15 @@ type BulkImportExpediente struct {
 	NumeroPaginas    string `json:"numero_paginas" excel:"NumeroPaginas"`
 	Ano              string `json:"ano" excel:"Ano"`
 	Fila             int    `json:"fila,omitempty"`
+}
+
+// ExpedienteExport represents a minimal set of fields used for exports
+type ExpedienteExport struct {
+	Grado            Grado  `bson:"grado" json:"grado"`
+	CIP              string `bson:"cip" json:"cip"`
+	ApellidosNombres string `bson:"apellidos_nombres" json:"apellidos_nombres"`
+	NumeroPaginas    int    `bson:"numero_paginas" json:"numero_paginas"`
+	Ano              int    `bson:"ano" json:"ano"`
 }
 
 // BulkImportResult represents the result of a bulk import operation

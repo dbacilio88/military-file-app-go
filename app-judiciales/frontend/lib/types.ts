@@ -289,6 +289,7 @@ export interface UpdateExpedienteInput {
 export interface ExpedienteSearchParams {
     page?: number;
     limit?: number;
+    search?: string; // Búsqueda general en apellidos/nombres y CIP
     grado?: Grado;
     situacion_militar?: SituacionMilitar;
     estado?: ExpedienteEstado;

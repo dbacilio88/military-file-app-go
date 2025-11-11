@@ -5,7 +5,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Build Stage
 # -----------------------------------------------------------------------------
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Add metadata
 LABEL maintainer="Sistema Expedientes <soporte@sistema.mil>"

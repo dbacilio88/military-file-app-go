@@ -6,11 +6,14 @@ import (
 	"expedientes-backend/internal/models"
 	"expedientes-backend/internal/services"
 	"expedientes-backend/internal/utils"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/xuri/excelize/v2"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -1100,6 +1103,79 @@ func (h *ExpedienteHandler) SearchExpedientes(c *gin.Context) {
 			"total_pages": totalPages,
 		},
 	})
+}
+
+// ExportExpedientesExcel exports all expedientes (minimal fields) as an Excel file
+func (h *ExpedienteHandler) ExportExpedientesExcel(c *gin.Context) {
+	// Only authorized users reach this point (route protected by middleware)
+	records, err := h.service.ExportAll()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+
+	// Create a new Excel file
+	f := excelize.NewFile()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Printf("Error closing Excel file: %v", err)
+		}
+	}()
+
+	sheetName := "Expedientes"
+	index, err := f.NewSheet(sheetName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Error creating Excel sheet"})
+		return
+	}
+	f.SetActiveSheet(index)
+
+	// Set headers
+	headers := []string{"Grado", "CIP", "ApellidosNombres", "NumeroPaginas", "Ano"}
+	for i, header := range headers {
+		cell := fmt.Sprintf("%c1", 'A'+i)
+		f.SetCellValue(sheetName, cell, header)
+	}
+
+	// Style headers
+	headerStyle, err := f.NewStyle(&excelize.Style{
+		Font: &excelize.Font{Bold: true},
+		Fill: excelize.Fill{Type: "pattern", Color: []string{"#CCE5FF"}, Pattern: 1},
+	})
+	if err == nil {
+		f.SetCellStyle(sheetName, "A1", fmt.Sprintf("%c1", 'A'+len(headers)-1), headerStyle)
+	}
+
+	// Write data
+	for i, record := range records {
+		row := i + 2 // Start from row 2 (after headers)
+		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), string(record.Grado))
+		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), record.CIP)
+		f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), record.ApellidosNombres)
+		f.SetCellValue(sheetName, fmt.Sprintf("D%d", row), record.NumeroPaginas)
+		f.SetCellValue(sheetName, fmt.Sprintf("E%d", row), record.Ano)
+	}
+
+	// Auto-fit columns
+	for i := 0; i < len(headers); i++ {
+		col := fmt.Sprintf("%c", 'A'+i)
+		f.SetColWidth(sheetName, col, col, 15)
+	}
+
+	// Generate filename with timestamp
+	filename := fmt.Sprintf("expedientes_export_%s.xlsx", time.Now().Format("20060102_150405"))
+
+	// Set headers for Excel download
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Status(http.StatusOK)
+
+	// Write Excel file to response
+	if err := f.Write(c.Writer); err != nil {
+		log.Printf("Error writing Excel file: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Error generating Excel file"})
+		return
+	}
 }
 
 // BulkImportExpedientes handles bulk import of expedientes from Excel file

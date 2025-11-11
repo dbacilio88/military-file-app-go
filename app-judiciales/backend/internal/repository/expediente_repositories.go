@@ -122,6 +122,14 @@ func (r *ExpedienteRepository) Search(params models.ExpedienteSearchParams) ([]*
 	filter := bson.M{"deletedAt": bson.M{"$exists": false}}
 
 	// Apply search filters
+	// General search across apellidos_nombres and CIP
+	if params.Search != "" {
+		filter["$or"] = []bson.M{
+			{"apellidos_nombres": bson.M{"$regex": params.Search, "$options": "i"}},
+			{"cip": bson.M{"$regex": params.Search, "$options": "i"}},
+		}
+	}
+
 	if params.Grado != "" {
 		filter["grado"] = params.Grado
 	}
@@ -201,6 +209,45 @@ func (r *ExpedienteRepository) Search(params models.ExpedienteSearchParams) ([]*
 	}
 
 	return expedientes, total, nil
+}
+
+// GetAllForExport returns all expedientes with only the fields required for export
+func (r *ExpedienteRepository) GetAllForExport() ([]models.ExpedienteExport, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	filter := bson.M{"deletedAt": bson.M{"$exists": false}}
+	projection := bson.M{
+		"grado":             1,
+		"cip":               1,
+		"apellidos_nombres": 1,
+		"numero_paginas":    1,
+		"ano":               1,
+	}
+
+	findOptions := options.Find().SetProjection(projection)
+
+	cursor, err := r.collection.Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var results []models.ExpedienteExport
+	for cursor.Next(ctx) {
+		var e models.ExpedienteExport
+		if err := cursor.Decode(&e); err != nil {
+			// skip malformed record but continue
+			continue
+		}
+		results = append(results, e)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }
 
 // Update updates an expediente
@@ -841,4 +888,42 @@ func (r *ExpedienteRepository) getEstadisticasTemporales(ctx context.Context) (*
 		UltimosRegistros: int(countLast30),
 		TendenciaMensual: tendencia,
 	}, nil
+}
+
+// ExportAll retrieves all expedientes for export (minimal fields only)
+func (r *ExpedienteRepository) ExportAll() ([]models.ExpedienteExport, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	filter := bson.M{"deletedAt": bson.M{"$exists": false}}
+
+	// Project only the fields needed for export
+	projection := bson.M{
+		"grado":             1,
+		"cip":               1,
+		"apellidos_nombres": 1,
+		"numero_paginas":    1,
+		"ano":               1,
+	}
+
+	findOptions := options.Find()
+	findOptions.SetProjection(projection)
+	findOptions.SetSort(bson.D{{Key: "orden", Value: 1}}) // Order by orden
+
+	cursor, err := r.collection.Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var exports []models.ExpedienteExport
+	for cursor.Next(ctx) {
+		var export models.ExpedienteExport
+		if err := cursor.Decode(&export); err != nil {
+			continue
+		}
+		exports = append(exports, export)
+	}
+
+	return exports, nil
 }
