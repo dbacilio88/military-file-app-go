@@ -5,6 +5,7 @@ import (
 	"errors"
 	"expedientes-backend/internal/database"
 	"expedientes-backend/internal/models"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -926,4 +927,47 @@ func (r *ExpedienteRepository) ExportAll() ([]models.ExpedienteExport, error) {
 	}
 
 	return exports, nil
+}
+
+// GetByDivision obtiene expedientes por división específica (optimizado)
+func (r *ExpedienteRepository) GetByDivision(divisionRange string, grados []models.Grado, situacion models.SituacionMilitar) ([]*models.Expediente, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Parsear el rango (ej: "AA–AM")
+	parts := strings.Split(divisionRange, "–")
+	if len(parts) != 2 {
+		return []*models.Expediente{}, nil
+	}
+
+	start := strings.TrimSpace(parts[0])
+	end := strings.TrimSpace(parts[1])
+
+	// Construir filtro
+	filter := bson.M{
+		"deletedAt": bson.M{"$exists": false},
+		"ubicacion": bson.M{
+			"$gte": start,
+			"$lte": end,
+		},
+		"grado":             bson.M{"$in": grados},
+		"situacion_militar": situacion,
+	}
+
+	// Opciones de búsqueda
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "orden", Value: 1}, {Key: "apellidos_nombres", Value: 1}})
+
+	cursor, err := r.collection.Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var expedientes []*models.Expediente
+	if err = cursor.All(ctx, &expedientes); err != nil {
+		return nil, err
+	}
+
+	return expedientes, nil
 }

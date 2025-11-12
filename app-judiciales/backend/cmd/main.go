@@ -245,6 +245,7 @@ func main() {
 				expedientes.GET(PathHome, logEndpoint("📂 EXPEDIENTES-LIST", "Consulta lista de expedientes"), middleware.RequirePermission(models.PermissionExpedienteRead), expedienteHandler.GetExpedientes)
 				expedientes.GET(PathVariableId, logEndpoint("📄 EXPEDIENTE-GET", "Consulta expediente específico"), middleware.RequirePermission(models.PermissionExpedienteRead), expedienteHandler.GetExpediente)
 				expedientes.GET("/search", logEndpoint("🔍 EXPEDIENTES-SEARCH", "Búsqueda de expedientes"), middleware.RequirePermission(models.PermissionExpedienteRead), expedienteHandler.SearchExpedientes)
+				expedientes.GET("/division", logEndpoint("📂 EXPEDIENTES-DIVISION", "Expedientes por división"), middleware.RequirePermission(models.PermissionExpedienteRead), expedienteHandler.GetExpedientesByDivision)
 
 				// Export (only system admin)
 				expedientes.GET("/export", logEndpoint("📤 EXPEDIENTES-EXPORT", "Exportar expedientes (Excel)"), middleware.RequirePermission(models.PermissionSystemAdmin), expedienteHandler.ExportExpedientesExcel)

@@ -695,6 +695,14 @@ export async function searchExpedientes(
   return handleResponse<ApiResponse<{ data: Expediente[], pagination?: { total: number, totalPages: number } }>>(response);
 }
 
+// Get expedientes by division (optimized)
+export async function getExpedientesByDivision(divisionRange: string): Promise<ApiResponse<Expediente[]>> {
+  const response = await safeFetch(`${API_BASE_URL}/expedientes/division?range=${encodeURIComponent(divisionRange)}`, {
+    headers: getAuthHeaders(),
+  });
+  return handleResponse<ApiResponse<Expediente[]>>(response);
+}
+
 // Get a single expediente by ID
 export async function getExpediente(id: string): Promise<ApiResponse<Expediente>> {
   const response = await safeFetch(`${API_BASE_URL}/expedientes/${id}/`, {

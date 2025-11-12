@@ -12,9 +12,10 @@ import { ExpedienteForm } from './form'
 import { ExpedientesImport } from './import'
 import { DeleteDialog } from './dialog'
 import { Pagination } from './pagination'
-import { Plus, Search, Filter, FileText, CheckCircle2, XCircle, X as XIcon, Trash2, UsersIcon, Upload, RefreshCw, Download } from 'lucide-react'
+import { Plus, Search, Filter, FileText, CheckCircle2, XCircle, X as XIcon, Trash2, UsersIcon, Upload, RefreshCw, Download, Archive } from 'lucide-react'
 import { usePermissions } from '@/contexts/authContext'
 import { exportExpedientes } from '@/lib/api'
+import { EstantesVisualization } from '@/components/EstantesVisualization'
 
 export function ExpedientesManagement() {
     const [expedientes, setExpedientes] = useState<Expediente[]>([])
@@ -25,6 +26,8 @@ export function ExpedientesManagement() {
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [isImportOpen, setIsImportOpen] = useState(false)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+    const [isEstantesOpen, setIsEstantesOpen] = useState(false)
+    const [allExpedientes, setAllExpedientes] = useState<Expediente[]>([])
     const [searchQuery, setSearchQuery] = useState('')
     const [searchValue, setSearchValue] = useState('')
     const [currentPage, setCurrentPage] = useState(1)
@@ -492,6 +495,53 @@ export function ExpedientesManagement() {
     const situacionOptions: SituacionMilitar[] = ['Actividad', 'Retiro']
     const estadoOptions: ExpedienteEstado[] = ['dentro', 'fuera']
 
+    // Función para obtener todos los expedientes para la visualización de estantes
+    const getAllExpedientesForEstantes = async (): Promise<Expediente[]> => {
+        try {
+            let allExpedientes: Expediente[] = []
+            let currentPage = 1
+            const pageSize = 1000 // Usar páginas más grandes
+            let hasMoreData = true
+
+            console.log('Iniciando carga de todos los expedientes...')
+
+            while (hasMoreData) {
+                const params: ExpedienteSearchParams = {
+                    page: currentPage,
+                    limit: pageSize,
+                }
+                
+                console.log(`Cargando página ${currentPage}...`)
+                const response = await searchExpedientes(params)
+                
+                if (response.success && response.data) {
+                    const responseData = response.data as any
+                    if (responseData.expedientes && Array.isArray(responseData.expedientes)) {
+                        allExpedientes = [...allExpedientes, ...responseData.expedientes]
+                        console.log(`Página ${currentPage}: ${responseData.expedientes.length} expedientes. Total acumulado: ${allExpedientes.length}`)
+                        
+                        // Si esta página tiene menos expedientes que el límite, ya no hay más datos
+                        if (responseData.expedientes.length < pageSize) {
+                            hasMoreData = false
+                        } else {
+                            currentPage++
+                        }
+                    } else {
+                        hasMoreData = false
+                    }
+                } else {
+                    hasMoreData = false
+                }
+            }
+
+            console.log(`Carga completada. Total de expedientes: ${allExpedientes.length}`)
+            return allExpedientes
+        } catch (error) {
+            console.error('Error fetching all expedientes:', error)
+            return []
+        }
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-3 mb-2">
@@ -605,6 +655,14 @@ export function ExpedientesManagement() {
                                     Exportar Excel
                                 </Button>
                             )}
+                            <Button
+                                onClick={() => setIsEstantesOpen(true)}
+                                variant="outline"
+                                className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+                            >
+                                <Archive className="h-4 w-4 mr-2" />
+                                Ver Estantes
+                            </Button>
                             <Button
                                 onClick={handleCreateExpediente}
                                 className="bg-indigo-600 hover:bg-indigo-700"
@@ -827,6 +885,13 @@ export function ExpedientesManagement() {
                     setExpedienteToDelete(null)
                 }}
             />
+
+            {/* Estantes Visualization */}
+            {isEstantesOpen && (
+                <EstantesVisualization
+                    onClose={() => setIsEstantesOpen(false)}
+                />
+            )}
         </div>
     )
 }

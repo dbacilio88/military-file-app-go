@@ -1105,6 +1105,36 @@ func (h *ExpedienteHandler) SearchExpedientes(c *gin.Context) {
 	})
 }
 
+// GetExpedientesByDivision obtiene expedientes de una división específica
+func (h *ExpedienteHandler) GetExpedientesByDivision(c *gin.Context) {
+	divisionRange := c.Query("range")
+	if divisionRange == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "division range is required",
+		})
+		return
+	}
+
+	expedientes, err := h.service.GetExpedientesByDivision(divisionRange)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"expedientes": expedientes,
+			"total":       len(expedientes),
+			"division":    divisionRange,
+		},
+	})
+}
+
 // ExportExpedientesExcel exports all expedientes (minimal fields) as an Excel file
 func (h *ExpedienteHandler) ExportExpedientesExcel(c *gin.Context) {
 	// Only authorized users reach this point (route protected by middleware)

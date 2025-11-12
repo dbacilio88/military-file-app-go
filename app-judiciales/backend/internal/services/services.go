@@ -270,7 +270,63 @@ func (s *ExpedienteService) Create(expediente *models.Expediente) error {
 		return errors.New("expediente with this CIP already exists")
 	}
 
+	// Auto-calcular ubicación basada en el primer apellido
+	expediente.Ubicacion = s.calculateUbicacion(expediente.ApellidosNombres)
+
 	return s.expedienteRepo.Create(expediente)
+}
+
+// calculateUbicacion calcula la ubicación basada en las primeras dos letras del primer apellido
+func (s *ExpedienteService) calculateUbicacion(apellidosNombres string) string {
+	if apellidosNombres == "" {
+		return "ZZ" // Default para casos sin apellido
+	}
+
+	// Extraer primer apellido
+	parts := strings.Fields(strings.TrimSpace(apellidosNombres))
+	if len(parts) == 0 {
+		return "ZZ"
+	}
+
+	primerApellido := strings.ToUpper(parts[0])
+	if len(primerApellido) < 2 {
+		return primerApellido + "Z" // Completar con Z si es muy corto
+	}
+
+	return primerApellido[:2]
+}
+
+// calculateOrden calcula el orden según grado y situación militar
+func (s *ExpedienteService) calculateOrden(grado models.Grado, situacion models.SituacionMilitar) int {
+	gradoPriority := map[models.Grado]int{
+		"GRAL":    1,
+		"CRL":     2,
+		"TTE CRL": 3,
+		"MY":      4,
+		"CAP":     5,
+		"TTE":     6,
+		"STTE":    7,
+		"TCO":     8,
+		"SSOO":    9,
+		"EC":      10,
+		"TROPA":   11,
+	}
+
+	situacionPriority := map[models.SituacionMilitar]int{
+		"Actividad": 1,
+		"Retiro":    2,
+	}
+
+	// Orden base: grado * 1000 + situación * 100
+	return gradoPriority[grado]*1000 + situacionPriority[situacion]*100
+}
+
+// GetExpedientesByDivision obtiene expedientes por división específica
+func (s *ExpedienteService) GetExpedientesByDivision(divisionRange string) ([]*models.Expediente, error) {
+	// Definir grados de oficiales según especificación
+	gradosOficiales := []models.Grado{"STTE", "TTE", "CAP", "MY", "TTE CRL", "CRL", "GRAL"}
+
+	return s.expedienteRepo.GetByDivision(divisionRange, gradosOficiales, "Actividad")
 }
 
 // GetByID returns an expediente by ID
@@ -326,6 +382,38 @@ func (s *ExpedienteService) Update(id string, updates map[string]interface{}) er
 		}
 	}
 
+	// Si se actualizan los apellidos, recalcular la ubicación automáticamente
+	if apellidos, ok := updates["apellidos_nombres"].(string); ok {
+		updates["ubicacion"] = s.calculateUbicacion(apellidos)
+	}
+
+	// Si se actualiza grado o situación militar, recalcular orden
+	if grado, gradoOk := updates["grado"]; gradoOk {
+		if situacion, situacionOk := updates["situacion_militar"]; situacionOk {
+			if g, ok := grado.(models.Grado); ok {
+				if sit, ok := situacion.(models.SituacionMilitar); ok {
+					updates["orden"] = s.calculateOrden(g, sit)
+				}
+			}
+		} else {
+			// Si solo se actualiza grado, obtener la situación actual
+			existing, err := s.expedienteRepo.GetByID(id)
+			if err == nil && existing != nil {
+				if g, ok := grado.(models.Grado); ok {
+					updates["orden"] = s.calculateOrden(g, existing.SituacionMilitar)
+				}
+			}
+		}
+	} else if situacion, situacionOk := updates["situacion_militar"]; situacionOk {
+		// Si solo se actualiza situación, obtener el grado actual
+		existing, err := s.expedienteRepo.GetByID(id)
+		if err == nil && existing != nil {
+			if sit, ok := situacion.(models.SituacionMilitar); ok {
+				updates["orden"] = s.calculateOrden(existing.Grado, sit)
+			}
+		}
+	}
+
 	return s.expedienteRepo.Update(id, updates)
 }
 
@@ -378,7 +466,7 @@ func (s *ExpedienteService) BulkImportFromExcel(file *multipart.FileHeader, crea
 	}
 
 	if len(rows) < 2 {
-		return nil, errors.New("Excel file must contain at least a header row and one data row")
+		return nil, errors.New("excel file must contain at least a header row and one data row")
 	}
 
 	// Validate headers
@@ -416,7 +504,7 @@ func (s *ExpedienteService) BulkImportFromExcel(file *multipart.FileHeader, crea
 // validateHeaders validates that Excel headers match expected format
 func (s *ExpedienteService) validateHeaders(headers []string, expected []string) error {
 	if len(headers) < len(expected) {
-		return fmt.Errorf("Excel file must contain at least %d columns: %s", len(expected), strings.Join(expected, ", "))
+		return fmt.Errorf("excel file must contain at least %d columns: %s", len(expected), strings.Join(expected, ", "))
 	}
 
 	for i, expectedHeader := range expected {
